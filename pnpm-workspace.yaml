@@ -1,0 +1,5 @@
+# pnpm 11: la config vive aquí (ya no en el campo "pnpm" de package.json)
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true

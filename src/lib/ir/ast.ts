@@ -1,0 +1,164 @@
+/**
+ * IR de Dédalo — el AST estructurado que es el hub de TODO.
+ *
+ * El árbol es "estructurado por construcción": cada sentencia de control contiene
+ * a sus hijos (then/else/body). Eso evita el problema de re-estructurar un grafo
+ * arbitrario en if/while, y hace que el codegen y el intérprete sean recorridos
+ * triviales del árbol. El diagrama DFD se DERIVA de este árbol (no al revés).
+ */
+
+export type AbstractType = 'num' | 'text' | 'bool';
+
+// ---------- Expresiones ----------
+
+export type Expr =
+	| { kind: 'num'; value: number }
+	| { kind: 'str'; value: string }
+	| { kind: 'bool'; value: boolean }
+	| { kind: 'var'; name: string }
+	| { kind: 'bin'; op: BinOp; left: Expr; right: Expr }
+	| { kind: 'un'; op: UnOp; expr: Expr }
+	| { kind: 'call'; fn: BuiltinFn; args: Expr[] }
+	| { kind: 'index'; arr: Expr; index: Expr };
+
+export type BinOp =
+	| '+'
+	| '-'
+	| '*'
+	| '/'
+	| '%'
+	| '=='
+	| '!='
+	| '<'
+	| '<='
+	| '>'
+	| '>='
+	| 'y'
+	| 'o';
+
+export type UnOp = '-' | 'no';
+
+/** Funciones integradas comunes en cursos de algoritmia (estilo PSeInt). */
+export type BuiltinFn = 'raiz' | 'abs' | 'piso' | 'techo' | 'redondear' | 'longitud' | 'aleatorio';
+
+// ---------- Sentencias ----------
+
+/** Cada nodo lleva un `id` estable para resaltarlo durante la ejecución. */
+export interface Node {
+	id: string;
+}
+
+export type Stmt =
+	| Assign
+	| Read
+	| Write
+	| If
+	| While
+	| DoWhile
+	| For;
+
+export interface Assign extends Node {
+	kind: 'assign';
+	target: string;
+	expr: Expr;
+}
+
+export interface Read extends Node {
+	kind: 'read';
+	vars: string[];
+}
+
+export interface Write extends Node {
+	kind: 'write';
+	exprs: Expr[];
+}
+
+export interface If extends Node {
+	kind: 'if';
+	cond: Expr;
+	then: Stmt[];
+	else: Stmt[];
+}
+
+export interface While extends Node {
+	kind: 'while';
+	cond: Expr;
+	body: Stmt[];
+}
+
+export interface DoWhile extends Node {
+	kind: 'dowhile';
+	body: Stmt[];
+	/** Se repite MIENTRAS la condición sea falsa (semántica "repetir … hasta que"). */
+	cond: Expr;
+}
+
+export interface For extends Node {
+	kind: 'for';
+	var: string;
+	from: Expr;
+	to: Expr;
+	step: Expr;
+	body: Stmt[];
+}
+
+export interface Program {
+	name: string;
+	body: Stmt[];
+}
+
+// ---------- Helpers de construcción ----------
+
+let _counter = 0;
+/** id único y estable por nodo creado en esta sesión. */
+export function newId(prefix = 'n'): string {
+	_counter += 1;
+	return `${prefix}${_counter}`;
+}
+
+export const num = (value: number): Expr => ({ kind: 'num', value });
+export const str = (value: string): Expr => ({ kind: 'str', value });
+export const bool = (value: boolean): Expr => ({ kind: 'bool', value });
+export const v = (name: string): Expr => ({ kind: 'var', name });
+export const bin = (op: BinOp, left: Expr, right: Expr): Expr => ({ kind: 'bin', op, left, right });
+export const un = (op: UnOp, expr: Expr): Expr => ({ kind: 'un', op, expr });
+
+export const assign = (target: string, expr: Expr): Assign => ({ kind: 'assign', id: newId('a'), target, expr });
+export const read = (...vars: string[]): Read => ({ kind: 'read', id: newId('r'), vars });
+export const write = (...exprs: Expr[]): Write => ({ kind: 'write', id: newId('w'), exprs });
+export const iff = (cond: Expr, then: Stmt[], els: Stmt[] = []): If => ({ kind: 'if', id: newId('if'), cond, then, else: els });
+export const whilst = (cond: Expr, body: Stmt[]): While => ({ kind: 'while', id: newId('wh'), cond, body });
+export const dowhile = (body: Stmt[], cond: Expr): DoWhile => ({ kind: 'dowhile', id: newId('do'), body, cond });
+export const forr = (
+	varName: string,
+	from: Expr,
+	to: Expr,
+	body: Stmt[],
+	step: Expr = num(1)
+): For => ({ kind: 'for', id: newId('for'), var: varName, from, to, step, body });
+
+/** Busca un nodo (sentencia) por id en todo el árbol. */
+export function findStmt(body: Stmt[], id: string): Stmt | undefined {
+	for (const s of body) {
+		if (s.id === id) return s;
+		const found = childLists(s)
+			.map((list) => findStmt(list, id))
+			.find(Boolean);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+/** Listas de hijos de una sentencia de control (vacío para sentencias simples). */
+export function childLists(s: Stmt): Stmt[][] {
+	switch (s.kind) {
+		case 'if':
+			return [s.then, s.else];
+		case 'while':
+		case 'dowhile':
+		case 'for':
+			return [s.body];
+		default:
+			return [];
+	}
+}

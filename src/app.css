@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+/* Svelte Flow base styles (canvas, controls, edges). */
+@import '@xyflow/svelte/dist/style.css';
+
+:root {
+	color-scheme: dark;
+}
+
+html,
+body {
+	height: 100%;
+}
+
+/* El canvas de Dédalo: fondo oscuro propio en vez del claro por defecto. */
+.svelte-flow {
+	background-color: #09090b; /* zinc-950 */
+}
+
+.svelte-flow__edge-path {
+	stroke: #52525b; /* zinc-600 */
+	stroke-width: 2;
+}
+
+.svelte-flow__edge.active .svelte-flow__edge-path {
+	stroke: #34d399; /* emerald-400 */
+}
