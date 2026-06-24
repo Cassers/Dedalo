@@ -5,6 +5,7 @@
 	import { insertAt, moveTo, moveGroup, removeStmt, findStmt, selectionRoots, locateFull } from '$lib/ir/edit';
 	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection } from '$lib/dfd/active';
 	import { dragging, clipboard } from '$lib/dnd';
+	import { get } from 'svelte/store';
 	import NodeEditor from './NodeEditor.svelte';
 
 	let { program, onchange }: { program: Program; onchange: () => void } = $props();
@@ -127,8 +128,8 @@
 		const roots = selectionRoots(program, $selection);
 		if (roots.length) clipboard.set(roots.map(cloneStmt));
 	}
-	function paste() {
-		const items = $clipboard;
+	/** Inserta una lista de bloques después de la selección (o al final). */
+	function insertAfterSelection(items: typeof program.body) {
 		if (!items.length) return;
 		const clones = items.map(cloneStmt);
 		const roots = selectionRoots(program, $selection);
@@ -137,12 +138,22 @@
 		let index = program.body.length;
 		if (roots.length) {
 			const loc = locateFull(program, roots[roots.length - 1].id);
-			if (loc) ({ parentId, branch } = loc), (index = loc.index + 1);
+			if (loc) {
+				parentId = loc.parentId;
+				branch = loc.branch;
+				index = loc.index + 1;
+			}
 		}
 		let i = index;
 		for (const c of clones) insertAt(program, parentId, branch, i++, c);
 		selection.set(new Set(clones.map((c) => c.id)));
 		onchange();
+	}
+	function paste() {
+		insertAfterSelection(get(clipboard)); // get(): valor actual, sin depender de la suscripción
+	}
+	function duplicate() {
+		insertAfterSelection(selectionRoots(program, $selection)); // directo, sin portapapeles
 	}
 	function deleteSel() {
 		const roots = selectionRoots(program, $selection);
@@ -255,7 +266,7 @@
 		<div class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-800 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
 			<span class="font-semibold text-sky-300">{$selection.size} seleccionados</span>
 			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={copy}>Copiar</button>
-			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={() => { copy(); paste(); }}>Duplicar</button>
+			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={duplicate}>Duplicar</button>
 			<button class="rounded border border-rose-800 px-2 py-0.5 text-rose-300 hover:bg-rose-950/40" onclick={deleteSel}>Borrar</button>
 		</div>
 	{/if}
@@ -263,7 +274,7 @@
 	<!-- editor del bloque (selección única) -->
 	{#if single}
 		<div class="absolute right-3 top-3 w-64 rounded-lg border border-sky-800 bg-zinc-900/95 p-3 shadow-xl backdrop-blur">
-			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onclose={() => clearSelection()} />
+			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} onclose={() => clearSelection()} />
 		</div>
 	{/if}
 </div>

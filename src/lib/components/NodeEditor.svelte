@@ -8,8 +8,9 @@
 		stmt,
 		onchange,
 		ondelete,
+		onduplicate,
 		onclose
-	}: { stmt: Stmt; onchange: () => void; ondelete: () => void; onclose: () => void } = $props();
+	}: { stmt: Stmt; onchange: () => void; ondelete: () => void; onduplicate: () => void; onclose: () => void } = $props();
 
 	const lbl = 'mb-1 text-[10px] uppercase tracking-wide text-zinc-500';
 	const inp =
@@ -74,7 +75,8 @@
 		</div>
 	{/if}
 
-	<button class="mt-1 self-start rounded border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950/40" onclick={ondelete}>
-		Borrar bloque
-	</button>
+	<div class="mt-1 flex gap-2">
+		<button class="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={onduplicate}>Duplicar</button>
+		<button class="rounded border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950/40" onclick={ondelete}>Borrar</button>
+	</div>
 </div>
