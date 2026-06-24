@@ -40,17 +40,75 @@ export function removeStmt(body: Stmt[], id: string): boolean {
 	return false;
 }
 
-/** Mueve una sentencia una posición arriba/abajo dentro de su propio bloque. */
-export function moveStmt(body: Stmt[], id: string, dir: -1 | 1): boolean {
-	const i = body.findIndex((s) => s.id === id);
-	if (i >= 0) {
-		const j = i + dir;
-		if (j < 0 || j >= body.length) return false;
-		[body[i], body[j]] = [body[j], body[i]];
-		return true;
-	}
-	for (const s of body) {
-		for (const list of childLists(s)) if (moveStmt(list, id, dir)) return true;
-	}
+/** Saca la sentencia del árbol y la devuelve (para reubicarla). */
+export function detachStmt(program: Program, id: string): Stmt | null {
+	const s = findStmt(program.body, id);
+	if (!s) return null;
+	removeStmt(program.body, id);
+	return s;
+}
+
+/** Inserta `stmt` en el bloque destino en la posición `index`. */
+export function insertAt(
+	program: Program,
+	parentId: string | null,
+	branch: Branch,
+	index: number,
+	stmt: Stmt
+): boolean {
+	const block = getBlock(program, parentId, branch);
+	if (!block) return false;
+	const i = Math.max(0, Math.min(index, block.length));
+	block.splice(i, 0, stmt);
+	return true;
+}
+
+/** ¿`ancestorId` contiene (directa o indirectamente) a `descId`? */
+export function isAncestor(program: Program, ancestorId: string, descId: string): boolean {
+	const a = findStmt(program.body, ancestorId);
+	if (!a) return false;
+	for (const list of childLists(a)) if (findStmt(list, descId)) return true;
 	return false;
+}
+
+/** Mueve una sentencia existente al bloque destino en `index`. No permite
+ * soltar un bloque dentro de sí mismo o de sus descendientes. */
+export function moveTo(
+	program: Program,
+	id: string,
+	parentId: string | null,
+	branch: Branch,
+	index: number
+): boolean {
+	if (id === parentId) return false;
+	if (parentId !== null && isAncestor(program, id, parentId)) return false;
+
+	// Ajuste de índice: si destino y origen son el mismo bloque y el origen está
+	// antes del punto de inserción, al quitarlo se corre una posición.
+	const sourceBlock = blockOf(program, id);
+	const targetBlock = getBlock(program, parentId, branch);
+	let idx = index;
+	if (sourceBlock && targetBlock && sourceBlock === targetBlock) {
+		const from = sourceBlock.findIndex((s) => s.id === id);
+		if (from >= 0 && from < idx) idx -= 1;
+	}
+
+	const stmt = detachStmt(program, id);
+	if (!stmt) return false;
+	return insertAt(program, parentId, branch, idx, stmt);
+}
+
+/** Lista de sentencias que contiene directamente a `id`. */
+function blockOf(program: Program, id: string): Stmt[] | null {
+	const walk = (body: Stmt[]): Stmt[] | null => {
+		if (body.some((s) => s.id === id)) return body;
+		for (const s of body) {
+			for (const list of childLists(s)) {
+				const f = walk(list);
+				if (f) return f;
+			}
+		}
+		return null;
+	};
+	return walk(program.body);
 }

@@ -20,14 +20,15 @@ pnpm check    # type-check con svelte-check
 
 ## Qué hace (MVP)
 
-- **Editor de diagrama** (Svelte Flow): símbolos DFD con ramas Sí/No y back-edges de ciclos.
-  El diagrama se **deriva** de un AST estructurado (los nodos no se arrastran libremente).
-- **Construcción** desde un esquema editable (panel izquierdo): agregar/editar/borrar/mover
-  sentencias, con expresiones escritas en texto (`a + b`, `n % 2 == 0`, `raiz(x)`).
+- **Editor de bloques estilo Scratch** (drag-and-drop): paleta de bloques DFD a la izquierda;
+  los arrastras al lienzo central y se **encajan/anidan** en el flujo (estructurado por
+  construcción → siempre genera código válido). Arrastra un bloque existente (por su grip ⠿)
+  para reordenarlo o moverlo a otra rama. Edición inline de expresiones (`a + b`, `n % 2 == 0`,
+  `raiz(x)`) y borrado por bloque.
 - **Código en vivo** (panel derecho): el mismo algoritmo en Pseudocódigo / Python / JavaScript,
   actualizándose con cada cambio.
 - **Ejecución en el navegador**: intérprete del AST con Correr / Paso / Pausa / Reiniciar,
-  resaltado del nodo activo, consola de salida y tabla de variables. Sin servidor.
+  resaltado del bloque activo, consola de salida y tabla de variables. Sin servidor.
 
 ## Arquitectura
 
@@ -37,13 +38,13 @@ El **AST estructurado** (`src/lib/ir/ast.ts`) es el hub: todo deriva de él.
 |------|------|----------|
 | IR / AST | `src/lib/ir/ast.ts` | tipos `Program/Stmt/Expr` + constructores |
 | Parser de expresiones | `src/lib/ir/parse.ts` | texto → `Expr` (recursivo-descendente) |
-| Edición | `src/lib/ir/edit.ts` | insertar/borrar/mover sobre el árbol |
+| Edición | `src/lib/ir/edit.ts` | insertar/borrar/mover/reubicar sobre el árbol (con guardas) |
+| Drag-and-drop | `src/lib/dnd.ts` | store del bloque que se arrastra (nuevo de paleta / mover) |
 | Ejemplos | `src/lib/ir/samples.ts` | algoritmos de arranque |
 | Codegen | `src/lib/codegen/index.ts` | AST → pseudo/python/js (un `Dialect` por lenguaje) |
 | Intérprete | `src/lib/interp/run.ts` | recorre el AST (generador, paso a paso) |
-| Layout DFD | `src/lib/dfd/layout.ts` | AST → nodos/edges de Svelte Flow (ramas y ciclos) |
-| Nodos DFD | `src/lib/dfd/nodes/*` | un componente por símbolo |
-| UI | `src/lib/components/*`, `src/routes/+page.svelte` | 3 zonas: esquema · diagrama · código+run |
+| Bloques | `src/lib/dfd/blockmeta.ts`, `labels.ts`, `active.ts` | metadatos/etiquetas/estado de bloques |
+| UI | `BlockPalette.svelte`, `BlockTree.svelte`, `CodePanel.svelte`, `RunPanel.svelte`, `+page.svelte` | 3 zonas: paleta · lienzo de bloques · código+run |
 
 ### Sentencias soportadas
 `Asignar` (proceso) · `Leer`/`Escribir` (entrada-salida) · `Si/Sino` (decisión) ·
@@ -52,19 +53,16 @@ El **AST estructurado** (`src/lib/ir/ast.ts`) es el hub: todo deriva de él.
 
 ## Stack
 
-SvelteKit 2 · Svelte 5 (runes) · TypeScript · Tailwind 4 · **@xyflow/svelte** (Svelte Flow) ·
-adapter-static (SPA). pnpm.
+SvelteKit 2 · Svelte 5 (runes) · TypeScript · Tailwind 4 · drag-and-drop nativo del navegador ·
+adapter-static (SPA). pnpm. (Sin dependencias de runtime: el lienzo es DOM propio.)
 
-> **Nota de tooling:** `@xyflow/svelte` publica `.svelte` con TypeScript. La clave es
-> `vitePreprocess({ script: true })` en `svelte.config.js`: transpila el TS (el stripper nativo
-> de Svelte 5 deja parámetros opcionales `?` inválidos como JS). Con eso, el prebundle de Vite
-> compila la librería bien y NO hace falta tocar `vite.config.ts`. Vite fijado en 7 (Vite 8/
-> rolldown aún falla con libs que envían `.svelte`). Si ves errores raros de `@xyflow`, borra
-> la caché: `rm -rf node_modules/.vite`.
+> **Nota:** Vite fijado en 7 (Vite 8/rolldown daba problemas). El editor de bloques es DOM
+> propio con drag-and-drop nativo, sin librerías de canvas. (Antes se usó Svelte Flow; se
+> retiró al pasar al modelo de bloques que encajan.)
 
 ## Roadmap
 
-- [ ] Insertar nodos directamente en el lienzo (botón "+" sobre los conectores).
+- [ ] Símbolos DFD con formas reales (rombo/paralelogramo) en los bloques del lienzo.
 - [ ] Codegen para lenguajes tipados (C, C++, Java) con inferencia simple de tipos.
 - [ ] Retos/niveles gamificados (enunciado + casos) y juicio real vía Probator/Piston.
 - [ ] Código nativo → DFD (parsers) — fuera del MVP.

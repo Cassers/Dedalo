@@ -137,6 +137,26 @@ export const forr = (
 	step: Expr = num(1)
 ): For => ({ kind: 'for', id: newId('for'), var: varName, from, to, step, body });
 
+/** Crea una sentencia por defecto del tipo dado (al soltar un bloque de la paleta). */
+export function createStmt(kind: Stmt['kind']): Stmt {
+	switch (kind) {
+		case 'assign':
+			return assign('x', num(0));
+		case 'read':
+			return read('x');
+		case 'write':
+			return write(v('x'));
+		case 'if':
+			return iff(bin('>', v('x'), num(0)), [], []);
+		case 'while':
+			return whilst(bin('>', v('x'), num(0)), []);
+		case 'for':
+			return forr('i', num(1), num(10), []);
+		case 'dowhile':
+			return dowhile([], bin('>', v('x'), num(0)));
+	}
+}
+
 /** Busca un nodo (sentencia) por id en todo el árbol. */
 export function findStmt(body: Stmt[], id: string): Stmt | undefined {
 	for (const s of body) {
