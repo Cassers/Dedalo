@@ -271,10 +271,10 @@
 	<!-- barra de selección múltiple -->
 	{#if $selection.size > 1}
 		<div data-panel class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-300 bg-white/95 px-3 py-1.5 text-xs text-zinc-700 shadow-xl backdrop-blur dark:border-sky-800 dark:bg-zinc-900/95 dark:text-zinc-200">
-			<span class="font-semibold text-sky-300">{$selection.size} seleccionados</span>
-			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={copy}>Copiar</button>
-			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={duplicate}>Duplicar</button>
-			<button class="rounded border border-rose-800 px-2 py-0.5 text-rose-300 hover:bg-rose-950/40" onclick={deleteSel}>Borrar</button>
+			<span class="font-semibold text-sky-600 dark:text-sky-300">{$selection.size} seleccionados</span>
+			<button class="rounded border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800" onclick={copy}>Copiar</button>
+			<button class="rounded border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800" onclick={duplicate}>Duplicar</button>
+			<button class="rounded border border-rose-300 px-2 py-0.5 text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40" onclick={deleteSel}>Borrar</button>
 		</div>
 	{/if}
 
