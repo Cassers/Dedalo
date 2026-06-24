@@ -54,10 +54,25 @@
 		dragging.set(null);
 		onchange();
 	}
-	function startMove(e: DragEvent, id: string) {
-		dragging.set({ type: 'move', id });
-		e.dataTransfer?.setData('text/plain', id);
-		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+	const movingId = $derived($dragging?.type === 'move' ? $dragging.id : null);
+
+	function startMove(e: DragEvent, n: FlowNode) {
+		if (!n.stmtId) return;
+		dragging.set({ type: 'move', id: n.stmtId });
+		if (e.dataTransfer) {
+			e.dataTransfer.setData('text/plain', n.stmtId);
+			e.dataTransfer.effectAllowed = 'move';
+			// Fantasma visible que sigue al cursor (la capa real es transparente).
+			const ghost = document.createElement('div');
+			ghost.textContent = n.label;
+			ghost.style.cssText =
+				`position:fixed;top:-1000px;left:-1000px;padding:6px 12px;border:2px solid ${strokeFor(n)};` +
+				`background:#18181b;color:#e4e4e7;border-radius:8px;white-space:nowrap;` +
+				`font:600 12px ui-monospace,monospace;box-shadow:0 6px 20px rgba(0,0,0,.5);`;
+			document.body.appendChild(ghost);
+			e.dataTransfer.setDragImage(ghost, 14, 14);
+			setTimeout(() => ghost.remove(), 0);
+		}
 	}
 
 	const selectedStmt = $derived($selectedStmtId ? findStmt(program.body, $selectedStmtId) : undefined);
@@ -88,14 +103,18 @@
 			{#each flow.nodes as n (n.id)}
 				{@const active = n.stmtId && $activeStmtId === n.stmtId}
 				{@const selected = n.stmtId && $selectedStmtId === n.stmtId}
+				{@const moving = n.stmtId && movingId === n.stmtId}
 				{@const stroke = active ? '#fbbf24' : selected ? '#38bdf8' : strokeFor(n)}
-				<g style={active ? 'filter:drop-shadow(0 0 6px rgba(251,191,36,0.7))' : ''}>
+				<g
+					opacity={moving ? 0.35 : 1}
+					style={active ? 'filter:drop-shadow(0 0 6px rgba(251,191,36,0.7))' : ''}
+				>
 					{#if n.shape === 'oval'}
-						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx={n.h / 2} ry={n.h / 2} fill={fillFor(n)} {stroke} stroke-width="2" />
+						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx={n.h / 2} ry={n.h / 2} fill={fillFor(n)} {stroke} stroke-width="2" stroke-dasharray={moving ? '5 4' : undefined} />
 					{:else if n.shape === 'rect'}
-						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx="6" fill={fillFor(n)} {stroke} stroke-width="2" />
+						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx="6" fill={fillFor(n)} {stroke} stroke-width="2" stroke-dasharray={moving ? '5 4' : undefined} />
 					{:else}
-						<polygon points={shapePoints(n)} fill={fillFor(n)} {stroke} stroke-width="2" />
+						<polygon points={shapePoints(n)} fill={fillFor(n)} {stroke} stroke-width="2" stroke-dasharray={moving ? '5 4' : undefined} />
 					{/if}
 					<text x={n.cx} y={n.y + n.h / 2 + 4} fill="#e4e4e7" font-size="12.5" text-anchor="middle" font-family="ui-monospace,monospace">{trunc(n.label)}</text>
 				</g>
@@ -109,7 +128,7 @@
 					role="button"
 					tabindex="0"
 					draggable="true"
-					ondragstart={(e) => startMove(e, n.stmtId!)}
+					ondragstart={(e) => startMove(e, n)}
 					ondragend={() => dragging.set(null)}
 					onclick={() => selectedStmtId.set(n.stmtId!)}
 					onkeydown={() => {}}
@@ -128,9 +147,9 @@
 				ondragleave={() => { if (overKey === d.key) overKey = null; }}
 				ondrop={(e) => drop(e, d)}
 				class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed transition-all {overKey === d.key
-					? 'border-emerald-400 bg-emerald-500/25'
+					? 'scale-110 border-emerald-400 bg-emerald-500/40 shadow-[0_0_14px_2px_rgba(52,211,153,0.6)]'
 					: $dragging
-						? 'border-emerald-700/70 bg-emerald-900/20'
+						? 'border-emerald-600/70 bg-emerald-900/20'
 						: 'border-transparent'}"
 				style="left:{d.cx}px; top:{d.cy}px; width:{NW}px; height:20px"
 			></div>
