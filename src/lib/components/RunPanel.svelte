@@ -174,7 +174,7 @@
 	<div class="grid min-h-0 flex-1 grid-rows-2 gap-2">
 		<div class="flex min-h-0 flex-col">
 			<div class="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">Salida {finished ? '· terminó' : ''}</div>
-			<pre class="flex-1 overflow-auto rounded border border-zinc-300 bg-zinc-900 p-2 font-mono text-xs text-emerald-300 dark:border-zinc-800 dark:bg-black">{output.join('\n')}</pre>
+			<pre class="flex-1 overflow-auto rounded border border-zinc-300 bg-zinc-50 p-2 font-mono text-xs text-emerald-700 dark:border-zinc-800 dark:bg-black dark:text-emerald-300">{output.join('\n')}</pre>
 		</div>
 		<div class="flex min-h-0 flex-col">
 			<div class="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">Variables</div>
