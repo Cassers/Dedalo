@@ -26,6 +26,7 @@ export interface FlowEdge {
 	label?: string;
 	lx?: number;
 	ly?: number;
+	arrow?: boolean; // false = sin punta de flecha (puntos de unión)
 }
 
 export interface DropZone {
@@ -52,6 +53,9 @@ const DH = 60;
 const V = 38; // separación vertical
 const H = 34; // separación entre columnas de ramas
 const MARGIN = 40;
+
+// Lado de la rama "Sí" en las decisiones: true = derecha (por defecto).
+let SI_RIGHT = true;
 
 let _id = 0;
 const eid = () => `e${_id++}`;
@@ -178,30 +182,37 @@ function placeIf(s: Extract<Stmt, { kind: 'if' }>, cx: number, y: number): Place
 	const edges: FlowEdge[] = [];
 	const drops: DropZone[] = [];
 
-	const thenW = widthOf(s.then);
-	const elseW = s.else.length ? widthOf(s.else) : NW;
-	const total = thenW + H + elseW;
-	const thenCx = cx - total / 2 + thenW / 2;
-	const elseCx = cx + total / 2 - elseW / 2;
+	// Por defecto "Sí" va a la derecha; con SI_RIGHT=false se invierte.
+	const leftIsThen = !SI_RIGHT;
+	const leftSt = leftIsThen ? s.then : s.else;
+	const rightSt = leftIsThen ? s.else : s.then;
+	const leftBr = leftIsThen ? 'then' : 'else';
+	const rightBr = leftIsThen ? 'else' : 'then';
+	const leftLabel = leftIsThen ? 'Sí' : 'No';
+	const rightLabel = leftIsThen ? 'No' : 'Sí';
+
+	const lW = leftSt.length ? widthOf(leftSt) : NW;
+	const rW = rightSt.length ? widthOf(rightSt) : NW;
+	const total = lW + H + rW;
+	const lCx = cx - total / 2 + lW / 2;
+	const rCx = cx + total / 2 - rW / 2;
 	const branchTop = y + DH + V;
 
-	const tR = placeBlock(s.then, s.id, 'then', thenCx, branchTop);
-	const eR = placeBlock(s.else, s.id, 'else', elseCx, branchTop);
-	nodes.push(...tR.nodes, ...eR.nodes);
-	edges.push(...tR.edges, ...eR.edges);
-	drops.push(...tR.drops, ...eR.drops);
+	const lR = placeBlock(leftSt, s.id, leftBr, lCx, branchTop);
+	const rR = placeBlock(rightSt, s.id, rightBr, rCx, branchTop);
+	nodes.push(...lR.nodes, ...rR.nodes);
+	edges.push(...lR.edges, ...rR.edges);
+	drops.push(...lR.drops, ...rR.drops);
 
-	const lv = { x: cx - DW / 2, y: y + DH / 2 }; // vértice izquierdo (Sí)
-	const rv = { x: cx + DW / 2, y: y + DH / 2 }; // vértice derecho (No)
-	// Sí → columna izquierda
-	edges.push({ id: eid(), d: poly([lv, { x: thenCx, y: lv.y }, { x: thenCx, y: tR.entry.y }]), label: 'Sí', lx: lv.x - 4, ly: lv.y - 6 });
-	// No → columna derecha
-	edges.push({ id: eid(), d: poly([rv, { x: elseCx, y: rv.y }, { x: elseCx, y: eR.entry.y }]), label: 'No', lx: rv.x + 4, ly: rv.y - 6 });
+	const lv = { x: cx - DW / 2, y: y + DH / 2 };
+	const rv = { x: cx + DW / 2, y: y + DH / 2 };
+	edges.push({ id: eid(), d: poly([lv, { x: lCx, y: lv.y }, { x: lCx, y: lR.entry.y }]), label: leftLabel, lx: lv.x - 6, ly: lv.y - 6 });
+	edges.push({ id: eid(), d: poly([rv, { x: rCx, y: rv.y }, { x: rCx, y: rR.entry.y }]), label: rightLabel, lx: rv.x + 6, ly: rv.y - 6 });
 
-	const mergeY = Math.max(tR.bottom, eR.bottom) + V;
-	// columnas se reúnen en (cx, mergeY)
-	edges.push({ id: eid(), d: poly([tR.exit, { x: tR.exit.x, y: mergeY }, { x: cx, y: mergeY }]) });
-	edges.push({ id: eid(), d: poly([eR.exit, { x: eR.exit.x, y: mergeY }, { x: cx, y: mergeY }]) });
+	const mergeY = Math.max(lR.bottom, rR.bottom) + V;
+	// columnas se reúnen en (cx, mergeY) — sin flecha en la unión
+	edges.push({ id: eid(), d: poly([lR.exit, { x: lR.exit.x, y: mergeY }, { x: cx, y: mergeY }]), arrow: false });
+	edges.push({ id: eid(), d: poly([rR.exit, { x: rR.exit.x, y: mergeY }, { x: cx, y: mergeY }]), arrow: false });
 
 	return {
 		nodes,
@@ -210,53 +221,65 @@ function placeIf(s: Extract<Stmt, { kind: 'if' }>, cx: number, y: number): Place
 		entry: { x: cx, y },
 		exit: { x: cx, y: mergeY },
 		bottom: mergeY,
-		left: Math.min(tR.left, cx - DW / 2),
-		right: Math.max(eR.right, cx + DW / 2)
+		left: Math.min(lR.left, cx - DW / 2),
+		right: Math.max(rR.right, cx + DW / 2)
 	};
 }
+
+const CLR = 26; // holgura lateral para carriles de líneas
 
 function placeLoop(s: Extract<Stmt, { kind: 'while' | 'for' }>, cx: number, y: number): Placed {
 	const dec = node('decision', s, cx, y, DW, DH);
 	const bodyTop = y + DH + V;
 	const b = placeBlock(s.body, s.id, 'body', cx, bodyTop);
 
+	const decMidY = y + DH / 2;
+	const dipY = b.bottom + 16; // baja bajo el cuerpo antes de girar (no lo roza)
+	const joinY = dipY + V; // el "No" se reincorpora al flujo aquí
+	const noRight = SI_RIGHT; // "No" sale a la derecha por defecto
+	const farLeft = Math.min(b.left, cx - DW / 2) - CLR;
+	const farRight = Math.max(b.right, cx + DW / 2) + CLR;
+	const backX = noRight ? farLeft : farRight; // retorno al lado opuesto del No
+	const noX = noRight ? farRight : farLeft;
+	const backVx = noRight ? cx - DW / 2 : cx + DW / 2;
+	const noVx = noRight ? cx + DW / 2 : cx - DW / 2;
+
 	const edges: FlowEdge[] = [...b.edges];
-	// Sí (verdadero) → cuerpo
-	edges.push({ id: eid(), d: poly([{ x: cx, y: y + DH }, { x: cx, y: b.entry.y }]), label: 'Sí', lx: cx + 6, ly: y + DH + 8 });
-	// back-edge: del fondo del cuerpo, por la izquierda, de vuelta al vértice izquierdo de la decisión
-	const backX = Math.min(b.left, cx - DW / 2) - 18;
-	edges.push({
-		id: eid(),
-		d: poly([b.exit, { x: backX, y: b.exit.y }, { x: backX, y: y + DH / 2 }, { x: cx - DW / 2, y: y + DH / 2 }])
-	});
+	// Sí → cuerpo
+	edges.push({ id: eid(), d: poly([{ x: cx, y: y + DH }, { x: cx, y: b.entry.y }]), label: 'Sí', lx: cx + 8, ly: y + DH + 10 });
+	// back-edge: cuerpo → abajo → lado → arriba → vértice del rombo
+	edges.push({ id: eid(), d: poly([b.exit, { x: b.exit.x, y: dipY }, { x: backX, y: dipY }, { x: backX, y: decMidY }, { x: backVx, y: decMidY }]) });
+	// No → sale por el lado y baja a reincorporarse (sin flecha en la unión)
+	edges.push({ id: eid(), d: poly([{ x: noVx, y: decMidY }, { x: noX, y: decMidY }, { x: noX, y: joinY }, { x: cx, y: joinY }]), label: 'No', lx: noVx + (noRight ? 8 : -8), ly: decMidY - 6, arrow: false });
 
 	return {
 		nodes: [dec, ...b.nodes],
 		edges,
 		drops: b.drops,
 		entry: { x: cx, y },
-		// salida por el vértice derecho (No)
-		exit: { x: cx + DW / 2, y: y + DH / 2 },
-		exitLabel: 'No',
-		bottom: b.bottom,
-		left: backX,
-		right: Math.max(b.right, cx + DW / 2)
+		exit: { x: cx, y: joinY },
+		bottom: joinY,
+		left: Math.min(backX, noX),
+		right: Math.max(backX, noX)
 	};
 }
 
 function placeDoWhile(s: Extract<Stmt, { kind: 'dowhile' }>, cx: number, y: number): Placed {
 	const b = placeBlock(s.body, s.id, 'body', cx, y);
 	const dec = node('decision', s, cx, b.bottom + V, DW, DH);
+	const decMidY = dec.y + DH / 2;
+	const onLeft = SI_RIGHT; // back-edge a la izquierda por defecto
+	const backX = onLeft ? Math.min(b.left, cx - DW / 2) - CLR : Math.max(b.right, cx + DW / 2) + CLR;
+	const vx = onLeft ? cx - DW / 2 : cx + DW / 2;
 	const edges: FlowEdge[] = [...b.edges];
 	edges.push(connect(b.exit, { x: cx, y: dec.y }));
-	// No (condición falsa) → vuelve al inicio del cuerpo por la izquierda
-	const backX = Math.min(b.left, cx - DW / 2) - 18;
+	// No (condición falsa) → vuelve al inicio del cuerpo por el costado
 	edges.push({
 		id: eid(),
-		d: poly([{ x: cx - DW / 2, y: dec.y + DH / 2 }, { x: backX, y: dec.y + DH / 2 }, { x: backX, y: b.entry.y - V / 2 }, { x: cx, y: b.entry.y - V / 2 }, { x: cx, y: b.entry.y }]),
+		d: poly([{ x: vx, y: decMidY }, { x: backX, y: decMidY }, { x: backX, y: b.entry.y - V / 2 }, { x: cx, y: b.entry.y - V / 2 }, { x: cx, y: b.entry.y }]),
 		label: 'No',
-		lx: cx - DW / 2 - 4,
-		ly: dec.y + DH / 2 - 6
+		lx: vx + (onLeft ? -8 : 8),
+		ly: decMidY - 6
 	});
 	return {
 		nodes: [...b.nodes, dec],
@@ -266,12 +289,13 @@ function placeDoWhile(s: Extract<Stmt, { kind: 'dowhile' }>, cx: number, y: numb
 		exit: { x: cx, y: dec.y + DH },
 		exitLabel: 'Sí',
 		bottom: dec.y + DH,
-		left: backX,
-		right: Math.max(b.right, cx + DW / 2)
+		left: Math.min(backX, cx - DW / 2),
+		right: Math.max(backX, cx + DW / 2)
 	};
 }
 
-export function buildFlow(body: Stmt[]): FlowGraph {
+export function buildFlow(body: Stmt[], siRight = true): FlowGraph {
+	SI_RIGHT = siRight;
 	_id = 0;
 	const cx = 0;
 	const start: FlowNode = { id: 'inicio', shape: 'oval', label: 'Inicio', cx, y: 0, w: 120, h: 40 };

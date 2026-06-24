@@ -3,14 +3,14 @@
 	import { createStmt, cloneStmt } from '$lib/ir/ast';
 	import { buildFlow, type FlowNode } from '$lib/dfd/flowlayout';
 	import { insertAt, moveTo, moveGroup, removeStmt, findStmt, selectionRoots, locateFull } from '$lib/ir/edit';
-	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection } from '$lib/dfd/active';
+	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection, siRight } from '$lib/dfd/active';
 	import { dragging, clipboard } from '$lib/dnd';
 	import { get } from 'svelte/store';
 	import NodeEditor from './NodeEditor.svelte';
 
 	let { program, onchange }: { program: Program; onchange: () => void } = $props();
 
-	const flow = $derived(buildFlow(program.body));
+	const flow = $derived(buildFlow(program.body, $siRight));
 	const NW = 172;
 	let canvasEl: HTMLDivElement;
 
@@ -197,7 +197,7 @@
 				</marker>
 			</defs>
 			{#each flow.edges as e (e.id)}
-				<path d={e.d} fill="none" stroke="#71717a" stroke-width="1.6" marker-end="url(#arrow)" />
+				<path d={e.d} fill="none" stroke="#71717a" stroke-width="1.6" marker-end={e.arrow === false ? undefined : 'url(#arrow)'} />
 				{#if e.label}
 					<text x={e.lx} y={e.ly} fill="#a1a1aa" font-size="11" font-weight="600" text-anchor="middle">{e.label}</text>
 				{/if}
