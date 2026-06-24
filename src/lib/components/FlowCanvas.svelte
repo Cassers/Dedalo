@@ -127,14 +127,14 @@
 
 	// ---------- copiar / pegar / borrar ----------
 	function copy() {
-		const roots = selectionRoots(program, $selection);
+		const roots = selectionRoots(program, get(selection));
 		if (roots.length) clipboard.set(roots.map(cloneStmt));
 	}
 	/** Inserta una lista de bloques después de la selección (o al final). */
 	function insertAfterSelection(items: typeof program.body) {
 		if (!items.length) return;
 		const clones = items.map(cloneStmt);
-		const roots = selectionRoots(program, $selection);
+		const roots = selectionRoots(program, get(selection));
 		let parentId: string | null = null;
 		let branch: 'then' | 'else' | 'body' = 'body';
 		let index = program.body.length;
@@ -155,10 +155,10 @@
 		insertAfterSelection(get(clipboard)); // get(): valor actual, sin depender de la suscripción
 	}
 	function duplicate() {
-		insertAfterSelection(selectionRoots(program, $selection)); // directo, sin portapapeles
+		insertAfterSelection(selectionRoots(program, get(selection))); // directo, sin portapapeles
 	}
 	function deleteSel() {
-		const roots = selectionRoots(program, $selection);
+		const roots = selectionRoots(program, get(selection));
 		if (!roots.length) return;
 		for (const r of roots) removeStmt(program.body, r.id);
 		clearSelection();
@@ -274,7 +274,7 @@
 	<!-- editor del bloque (selección única) -->
 	{#if single}
 		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-800 bg-zinc-900/95 p-3 shadow-xl backdrop-blur">
-			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} onclose={() => clearSelection()} />
+			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} oncopy={copy} onpaste={paste} onclose={() => clearSelection()} />
 		</div>
 	{/if}
 </div>
