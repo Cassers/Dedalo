@@ -5,7 +5,7 @@
 	import FlowCanvas from '$lib/components/FlowCanvas.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import RunPanel from '$lib/components/RunPanel.svelte';
-	import { clearSelection, siRight } from '$lib/dfd/active';
+	import { clearSelection } from '$lib/dfd/active';
 
 	let program = $state<Program>(SAMPLES[0].build());
 	let input = $state(SAMPLES[0].input);
@@ -37,13 +37,6 @@
 	<header class="flex items-center gap-3 border-b border-zinc-800 px-4 py-2">
 		<span class="text-lg font-bold text-zinc-100">Dédalo</span>
 		<span class="text-xs text-zinc-500">programa con diagramas de flujo</span>
-		<button
-			onclick={() => siRight.update((v) => !v)}
-			title="invertir el lado de las ramas Sí/No en las decisiones"
-			class="ml-3 rounded border border-sky-700 bg-sky-950/40 px-2.5 py-1 text-xs font-medium text-sky-200 hover:bg-sky-900/50"
-		>
-			⇄ Invertir ramas (Sí: {$siRight ? 'derecha' : 'izquierda'})
-		</button>
 		<div class="ml-auto flex items-center gap-2">
 			<span class="text-xs text-zinc-500">empezar con</span>
 			<select

@@ -3,14 +3,14 @@
 	import { createStmt, cloneStmt } from '$lib/ir/ast';
 	import { buildFlow, type FlowNode } from '$lib/dfd/flowlayout';
 	import { insertAt, moveTo, moveGroup, removeStmt, findStmt, selectionRoots, locateFull } from '$lib/ir/edit';
-	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection, siRight } from '$lib/dfd/active';
+	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection } from '$lib/dfd/active';
 	import { dragging, clipboard } from '$lib/dnd';
 	import { get } from 'svelte/store';
 	import NodeEditor from './NodeEditor.svelte';
 
 	let { program, onchange }: { program: Program; onchange: () => void } = $props();
 
-	const flow = $derived(buildFlow(program.body, $siRight));
+	const flow = $derived(buildFlow(program.body));
 	const NW = 172;
 	let canvasEl: HTMLDivElement;
 
@@ -94,6 +94,8 @@
 	}
 	function bgDown(e: PointerEvent) {
 		if (e.button !== 0) return;
+		// No iniciar marco si el clic fue sobre un bloque o un panel flotante.
+		if ((e.target as HTMLElement).closest('[data-node],[data-panel]')) return;
 		const p = localPt(e);
 		marq = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
 	}
@@ -184,11 +186,8 @@
 
 <svelte:window onpointermove={winMove} onpointerup={winUp} onkeydown={onKey} />
 
-<div class="relative h-full w-full overflow-auto">
+<div class="relative h-full w-full overflow-auto" onpointerdown={bgDown} role="presentation">
 	<div bind:this={canvasEl} class="relative mx-auto select-none" style="width:{flow.width}px; height:{flow.height}px">
-		<!-- capa de fondo: inicia el marco de selección -->
-		<div class="absolute inset-0" onpointerdown={bgDown} role="presentation"></div>
-
 		<!-- SVG: figuras + líneas -->
 		<svg class="absolute inset-0 pointer-events-none" width={flow.width} height={flow.height}>
 			<defs>
@@ -224,6 +223,7 @@
 		{#each flow.nodes as n (n.id)}
 			{#if n.stmtId}
 				<div
+					data-node
 					role="button"
 					tabindex="0"
 					draggable="true"
@@ -263,7 +263,7 @@
 
 	<!-- barra de selección múltiple -->
 	{#if $selection.size > 1}
-		<div class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-800 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
+		<div data-panel class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-800 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
 			<span class="font-semibold text-sky-300">{$selection.size} seleccionados</span>
 			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={copy}>Copiar</button>
 			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={duplicate}>Duplicar</button>
@@ -273,7 +273,7 @@
 
 	<!-- editor del bloque (selección única) -->
 	{#if single}
-		<div class="absolute right-3 top-3 w-64 rounded-lg border border-sky-800 bg-zinc-900/95 p-3 shadow-xl backdrop-blur">
+		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-800 bg-zinc-900/95 p-3 shadow-xl backdrop-blur">
 			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} onclose={() => clearSelection()} />
 		</div>
 	{/if}

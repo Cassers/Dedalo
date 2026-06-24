@@ -73,17 +73,21 @@ export interface Write extends Node {
 	exprs: Expr[];
 }
 
+/** `flip` (en sentencias con rombo): invierte el lado de las ramas/retorno en el
+ * diagrama. Por defecto la rama "Sí" va a la derecha; con flip=true, a la izquierda. */
 export interface If extends Node {
 	kind: 'if';
 	cond: Expr;
 	then: Stmt[];
 	else: Stmt[];
+	flip?: boolean;
 }
 
 export interface While extends Node {
 	kind: 'while';
 	cond: Expr;
 	body: Stmt[];
+	flip?: boolean;
 }
 
 export interface DoWhile extends Node {
@@ -91,6 +95,7 @@ export interface DoWhile extends Node {
 	body: Stmt[];
 	/** Se repite MIENTRAS la condición sea falsa (semántica "repetir … hasta que"). */
 	cond: Expr;
+	flip?: boolean;
 }
 
 export interface For extends Node {
@@ -100,6 +105,7 @@ export interface For extends Node {
 	to: Expr;
 	step: Expr;
 	body: Stmt[];
+	flip?: boolean;
 }
 
 export interface Program {
@@ -168,13 +174,13 @@ export function cloneStmt(s: Stmt): Stmt {
 		case 'write':
 			return { kind: 'write', id: newId('w'), exprs: s.exprs.map(e) };
 		case 'if':
-			return { kind: 'if', id: newId('if'), cond: e(s.cond), then: s.then.map(cloneStmt), else: s.else.map(cloneStmt) };
+			return { kind: 'if', id: newId('if'), cond: e(s.cond), then: s.then.map(cloneStmt), else: s.else.map(cloneStmt), flip: s.flip };
 		case 'while':
-			return { kind: 'while', id: newId('wh'), cond: e(s.cond), body: s.body.map(cloneStmt) };
+			return { kind: 'while', id: newId('wh'), cond: e(s.cond), body: s.body.map(cloneStmt), flip: s.flip };
 		case 'dowhile':
-			return { kind: 'dowhile', id: newId('do'), body: s.body.map(cloneStmt), cond: e(s.cond) };
+			return { kind: 'dowhile', id: newId('do'), body: s.body.map(cloneStmt), cond: e(s.cond), flip: s.flip };
 		case 'for':
-			return { kind: 'for', id: newId('for'), var: s.var, from: e(s.from), to: e(s.to), step: e(s.step), body: s.body.map(cloneStmt) };
+			return { kind: 'for', id: newId('for'), var: s.var, from: e(s.from), to: e(s.to), step: e(s.step), body: s.body.map(cloneStmt), flip: s.flip };
 	}
 }
 

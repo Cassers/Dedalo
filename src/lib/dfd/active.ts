@@ -20,6 +20,3 @@ export function toggleSelect(id: string) {
 export function clearSelection() {
 	selection.set(new Set());
 }
-
-/** Lado de la rama "Sí" en las decisiones: true = derecha (por defecto). */
-export const siRight = writable<boolean>(true);

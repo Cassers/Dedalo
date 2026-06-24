@@ -75,6 +75,16 @@
 		</div>
 	{/if}
 
+	{#if stmt.kind === 'if' || stmt.kind === 'while' || stmt.kind === 'for' || stmt.kind === 'dowhile'}
+		<button
+			class="self-start rounded border border-sky-700 bg-sky-950/40 px-2 py-1 text-xs text-sky-200 hover:bg-sky-900/50"
+			onclick={() => { stmt.flip = !stmt.flip; onchange(); }}
+			title="invertir el lado de las ramas/retorno de este bloque"
+		>
+			⇄ Invertir ramas (Sí: {stmt.flip ? 'izquierda' : 'derecha'})
+		</button>
+	{/if}
+
 	<div class="mt-1 flex gap-2">
 		<button class="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={onduplicate}>Duplicar</button>
 		<button class="rounded border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950/40" onclick={ondelete}>Borrar</button>

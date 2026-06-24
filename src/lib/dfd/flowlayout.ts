@@ -54,9 +54,6 @@ const V = 38; // separación vertical
 const H = 34; // separación entre columnas de ramas
 const MARGIN = 40;
 
-// Lado de la rama "Sí" en las decisiones: true = derecha (por defecto).
-let SI_RIGHT = true;
-
 let _id = 0;
 const eid = () => `e${_id++}`;
 
@@ -182,8 +179,8 @@ function placeIf(s: Extract<Stmt, { kind: 'if' }>, cx: number, y: number): Place
 	const edges: FlowEdge[] = [];
 	const drops: DropZone[] = [];
 
-	// Por defecto "Sí" va a la derecha; con SI_RIGHT=false se invierte.
-	const leftIsThen = !SI_RIGHT;
+	// Por defecto "Sí" va a la derecha; con flip=true (por nodo) se invierte.
+	const leftIsThen = !!s.flip;
 	const leftSt = leftIsThen ? s.then : s.else;
 	const rightSt = leftIsThen ? s.else : s.then;
 	const leftBr = leftIsThen ? 'then' : 'else';
@@ -236,7 +233,7 @@ function placeLoop(s: Extract<Stmt, { kind: 'while' | 'for' }>, cx: number, y: n
 	const decMidY = y + DH / 2;
 	const dipY = b.bottom + 16; // baja bajo el cuerpo antes de girar (no lo roza)
 	const joinY = dipY + V; // el "No" se reincorpora al flujo aquí
-	const noRight = SI_RIGHT; // "No" sale a la derecha por defecto
+	const noRight = !s.flip; // "No" sale a la derecha por defecto (por nodo)
 	const farLeft = Math.min(b.left, cx - DW / 2) - CLR;
 	const farRight = Math.max(b.right, cx + DW / 2) + CLR;
 	const backX = noRight ? farLeft : farRight; // retorno al lado opuesto del No
@@ -268,7 +265,7 @@ function placeDoWhile(s: Extract<Stmt, { kind: 'dowhile' }>, cx: number, y: numb
 	const b = placeBlock(s.body, s.id, 'body', cx, y);
 	const dec = node('decision', s, cx, b.bottom + V, DW, DH);
 	const decMidY = dec.y + DH / 2;
-	const onLeft = SI_RIGHT; // back-edge a la izquierda por defecto
+	const onLeft = !s.flip; // back-edge a la izquierda por defecto (por nodo)
 	const backX = onLeft ? Math.min(b.left, cx - DW / 2) - CLR : Math.max(b.right, cx + DW / 2) + CLR;
 	const vx = onLeft ? cx - DW / 2 : cx + DW / 2;
 	const edges: FlowEdge[] = [...b.edges];
@@ -294,8 +291,7 @@ function placeDoWhile(s: Extract<Stmt, { kind: 'dowhile' }>, cx: number, y: numb
 	};
 }
 
-export function buildFlow(body: Stmt[], siRight = true): FlowGraph {
-	SI_RIGHT = siRight;
+export function buildFlow(body: Stmt[]): FlowGraph {
 	_id = 0;
 	const cx = 0;
 	const start: FlowNode = { id: 'inicio', shape: 'oval', label: 'Inicio', cx, y: 0, w: 120, h: 40 };
