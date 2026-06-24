@@ -13,25 +13,31 @@
 	let sampleKey = $state(SAMPLES[0].key);
 
 	// --- Historial deshacer/rehacer ---
-	const snap = () => $state.snapshot(program) as Program; // copia plana profunda
+	// Clon profundo vía JSON: el programa es datos puros JSON-safe y JSON atraviesa
+	// los proxies `$state` de Svelte sin DataCloneError (structuredClone sí falla).
+	const snap = (p: Program = program): Program => JSON.parse(JSON.stringify(p));
 	let undoStack = $state<Program[]>([]);
 	let redoStack = $state<Program[]>([]);
-	let committed: Program = snap(); // estado confirmado actual
+	let committed: Program = snap(); // estado confirmado actual (detached, congelado)
 
-	// Reasignar el objeto fuerza el recálculo de código + diagrama.
+	/** Tras una edición: archiva el estado previo y publica uno NUEVO y detached.
+	 *  Clave: `program` y `committed` deben ser objetos distintos para que mutar el
+	 *  canvas no corrompa el historial, y `program` debe ser una referencia nueva
+	 *  (no reusar `body`) para que el `$derived` del canvas recalcule siempre. */
 	function touch() {
-		undoStack = [...undoStack.slice(-99), committed]; // guarda el estado previo
+		undoStack = [...undoStack.slice(-99), committed];
 		redoStack = [];
-		committed = snap();
-		program = { ...program, body: program.body };
+		const current = snap();
+		committed = current;
+		program = snap(current); // objeto nuevo e independiente → re-render seguro
 	}
 	function undo() {
 		if (!undoStack.length) return;
 		redoStack = [...redoStack, committed];
 		const prev = undoStack[undoStack.length - 1];
 		undoStack = undoStack.slice(0, -1);
-		program = structuredClone(prev);
-		committed = structuredClone(prev);
+		committed = prev;
+		program = snap(prev);
 		clearSelection();
 	}
 	function redo() {
@@ -39,8 +45,8 @@
 		undoStack = [...undoStack, committed];
 		const next = redoStack[redoStack.length - 1];
 		redoStack = redoStack.slice(0, -1);
-		program = structuredClone(next);
-		committed = structuredClone(next);
+		committed = next;
+		program = snap(next);
 		clearSelection();
 	}
 	function resetHistory() {
@@ -51,7 +57,7 @@
 
 	function loadSample(key: string) {
 		if (key === '__blank__') {
-			program = { name: 'Mi algoritmo', body: [] };
+			program = { name: 'main', params: [], body: [] };
 			input = '';
 			sampleKey = key;
 			clearSelection();

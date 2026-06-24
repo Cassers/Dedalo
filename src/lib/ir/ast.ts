@@ -109,7 +109,12 @@ export interface For extends Node {
 }
 
 export interface Program {
+	/** Nombre de la función (símbolo de Inicio). Por defecto "main". */
 	name: string;
+	/** Parámetros que recibe la función (se definen en el Inicio). */
+	params?: string[];
+	/** Variable a devolver al terminar (símbolo de Fin). Si está vacío, no devuelve nada. */
+	returnVar?: string;
 	body: Stmt[];
 }
 
@@ -163,9 +168,12 @@ export function createStmt(kind: Stmt['kind']): Stmt {
 	}
 }
 
-/** Clona una sentencia (y sus hijos) con ids nuevos. Las expresiones no llevan id. */
+/** Clona una sentencia (y sus hijos) con ids nuevos. Las expresiones no llevan id.
+ *  Nota: las sentencias pueden venir de un proxy `$state` de Svelte, que NO es
+ *  clonable con `structuredClone` (DataCloneError). Las `Expr` son datos puros
+ *  JSON-safe, así que el clon vía JSON funciona y evita el proxy. */
 export function cloneStmt(s: Stmt): Stmt {
-	const e = (x: Expr): Expr => structuredClone(x);
+	const e = (x: Expr): Expr => JSON.parse(JSON.stringify(x)) as Expr;
 	switch (s.kind) {
 		case 'assign':
 			return { kind: 'assign', id: newId('a'), target: s.target, expr: e(s.expr) };

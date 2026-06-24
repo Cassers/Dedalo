@@ -41,6 +41,10 @@ interface Dialect {
 	whileClose: string | null;
 	forOpen: (varName: string, from: string, to: string, step: string) => string;
 	forClose: string | null;
+	// Firma de la función (Inicio) y retorno (Fin).
+	funcOpen: (name: string, params: string[]) => string;
+	funcClose: string | null;
+	ret: (varName: string) => string;
 }
 
 // ---------- Render de expresiones ----------
@@ -162,7 +166,10 @@ const pseudo: Dialect = {
 	whileClose: 'FinMientras',
 	forOpen: (varName, from, to, step) =>
 		`Para ${varName} <- ${from} Hasta ${to} Con Paso ${step} Hacer`,
-	forClose: 'FinPara'
+	forClose: 'FinPara',
+	funcOpen: (name, params) => `Funcion ${name}(${params.join(', ')})`,
+	funcClose: 'FinFuncion',
+	ret: (vn) => `Retornar ${vn}`
 };
 
 const python: Dialect = {
@@ -184,7 +191,10 @@ const python: Dialect = {
 	whileOpen: (c) => `while ${c}:`,
 	whileClose: null,
 	forOpen: (varName, from, to, step) => `for ${varName} in range(${from}, (${to}) + 1, ${step}):`,
-	forClose: null
+	forClose: null,
+	funcOpen: (name, params) => `def ${name}(${params.join(', ')}):`,
+	funcClose: null,
+	ret: (vn) => `return ${vn}`
 };
 
 const javascript: Dialect = {
@@ -207,7 +217,10 @@ const javascript: Dialect = {
 	whileClose: '}',
 	forOpen: (varName, from, to, step) =>
 		`for (let ${varName} = ${from}; ${varName} <= ${to}; ${varName} += ${step}) {`,
-	forClose: '}'
+	forClose: '}',
+	funcOpen: (name, params) => `function ${name}(${params.join(', ')}) {`,
+	funcClose: '}',
+	ret: (vn) => `return ${vn};`
 };
 
 const DIALECTS: Record<TargetLang, Dialect> = { pseudo, python, javascript };
@@ -234,6 +247,19 @@ function header(lang: TargetLang, p: Program): string[] {
 /** Punto de entrada: AST → string de código en el lenguaje pedido. */
 export function generate(lang: TargetLang, program: Program): string {
 	const d = DIALECTS[lang];
-	const lines = [...header(lang, program), ...emitStmts(program.body, d)];
+	const name = program.name || 'main';
+	const params = program.params ?? [];
+
+	// El cuerpo se envuelve en la firma de la función e indenta un nivel.
+	const inner = emitStmts(program.body, d);
+	if (program.returnVar) inner.push(d.ret(program.returnVar));
+
+	const body = [
+		d.funcOpen(name, params),
+		...indentLines(inner, d, 1),
+		...(d.funcClose ? [d.funcClose] : [])
+	];
+
+	const lines = [...header(lang, program), ...body];
 	return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }

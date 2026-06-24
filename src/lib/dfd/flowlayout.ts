@@ -3,7 +3,7 @@
  * ortogonales con flechas, etiquetas Sí/No y zonas de drop). Todo se DERIVA del
  * AST. El render (FlowCanvas) sólo dibuja esta geometría en SVG.
  */
-import type { Stmt } from '$lib/ir/ast';
+import type { Program, Stmt } from '$lib/ir/ast';
 import type { Branch } from '$lib/ir/edit';
 import { stmtLabel } from './labels';
 
@@ -12,6 +12,8 @@ export type ShapeKind = 'oval' | 'rect' | 'io' | 'decision';
 export interface FlowNode {
 	id: string;
 	stmtId?: string;
+	/** Terminales especiales editables: 'start' = Inicio (nombre/params), 'end' = Fin (retorno). */
+	role?: 'start' | 'end';
 	shape: ShapeKind;
 	label: string;
 	cx: number; // centro X
@@ -72,6 +74,15 @@ interface Placed {
 	right: number;
 }
 
+// Ancho de un nodo simple según el largo de su etiqueta (evita desbordes).
+const CHAR = 7.6;
+const MAXCHARS = 34; // tope (alineado con el truncado del render)
+function nodeW(s: Stmt): number {
+	const len = Math.min(stmtLabel(s).length, MAXCHARS);
+	const slant = s.kind === 'read' || s.kind === 'write' ? 26 : 0; // el paralelogramo come ancho
+	return Math.max(NW, Math.round(len * CHAR + 30 + slant));
+}
+
 // Ancho horizontal que ocupa un bloque (para separar columnas de ramas).
 function widthOf(stmts: Stmt[]): number {
 	return stmts.reduce((w, s) => Math.max(w, widthStmt(s)), NW);
@@ -87,7 +98,7 @@ function widthStmt(s: Stmt): number {
 		case 'dowhile':
 			return Math.max(DW, widthOf(s.body)) + H; // espacio para el back-edge lateral
 		default:
-			return NW;
+			return nodeW(s);
 	}
 }
 
@@ -146,10 +157,10 @@ function node(shape: ShapeKind, s: Stmt, cx: number, y: number, w: number, h: nu
 function placeStmt(s: Stmt, parentId: string | null, branch: Branch, cx: number, y: number): Placed {
 	switch (s.kind) {
 		case 'assign':
-			return simple(node('rect', s, cx, y, NW, NH));
+			return simple(node('rect', s, cx, y, nodeW(s), NH));
 		case 'read':
 		case 'write':
-			return simple(node('io', s, cx, y, NW, NH));
+			return simple(node('io', s, cx, y, nodeW(s), NH));
 		case 'if':
 			return placeIf(s, cx, y);
 		case 'while':
@@ -291,23 +302,32 @@ function placeDoWhile(s: Extract<Stmt, { kind: 'dowhile' }>, cx: number, y: numb
 	};
 }
 
-export function buildFlow(body: Stmt[]): FlowGraph {
+const TOP = 28; // espacio en blanco sobre el símbolo de Inicio
+const ovalW = (label: string) => Math.max(120, label.length * 8.5 + 34);
+
+export function buildFlow(program: Program): FlowGraph {
 	_id = 0;
 	const cx = 0;
-	const start: FlowNode = { id: 'inicio', shape: 'oval', label: 'Inicio', cx, y: 0, w: 120, h: 40 };
-	const block = placeBlock(body, null, 'body', cx, 40 + V);
+	const name = program.name || 'main';
+	const params = program.params ?? [];
+	const startLabel = params.length ? `${name}(${params.join(', ')})` : name;
+	const endLabel = program.returnVar ? `retornar ${program.returnVar}` : 'Fin';
+
+	const start: FlowNode = { id: 'inicio', role: 'start', shape: 'oval', label: startLabel, cx, y: TOP, w: ovalW(startLabel), h: 40 };
+	const block = placeBlock(program.body, null, 'body', cx, TOP + 40 + V);
 	const endY = block.bottom + V;
-	const end: FlowNode = { id: 'fin', shape: 'oval', label: 'Fin', cx, y: endY, w: 120, h: 40 };
+	const end: FlowNode = { id: 'fin', role: 'end', shape: 'oval', label: endLabel, cx, y: endY, w: ovalW(endLabel), h: 40 };
 
 	const edges: FlowEdge[] = [
-		connect({ x: cx, y: 40 }, block.entry),
+		connect({ x: cx, y: TOP + 40 }, block.entry),
 		...block.edges,
 		connect(block.exit, { x: cx, y: endY }, block.exitLabel)
 	];
 
 	// Normaliza coordenadas (cx=0 → margen) y calcula tamaño total.
-	const left = Math.min(block.left, -60) - MARGIN;
-	const right = Math.max(block.right, 60) + MARGIN;
+	const halfW = Math.max(start.w, end.w) / 2;
+	const left = Math.min(block.left, -halfW) - MARGIN;
+	const right = Math.max(block.right, halfW) + MARGIN;
 	const offX = -left;
 	const width = right - left;
 	const height = endY + 40 + MARGIN;

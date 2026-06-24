@@ -8,10 +8,16 @@
 	import { isDark } from '$lib/theme';
 	import { get } from 'svelte/store';
 	import NodeEditor from './NodeEditor.svelte';
+	import ProgramEditor from './ProgramEditor.svelte';
 
 	let { program, onchange }: { program: Program; onchange: () => void } = $props();
 
-	const flow = $derived(buildFlow(program.body));
+	const flow = $derived(buildFlow(program));
+	let progEdit = $state<'start' | 'end' | null>(null);
+	function openProgram(role: 'start' | 'end') {
+		clearSelection();
+		progEdit = role;
+	}
 	const NW = 172;
 	let canvasEl: HTMLDivElement;
 
@@ -43,7 +49,7 @@
 	}
 	const edgeColor = $derived($isDark ? '#71717a' : '#a1a1aa');
 	const textColor = $derived($isDark ? '#e4e4e7' : '#27272a');
-	const trunc = (s: string) => (s.length > 26 ? s.slice(0, 25) + '…' : s);
+	const trunc = (s: string) => (s.length > 34 ? s.slice(0, 33) + '…' : s);
 
 	// ---------- drag-and-drop (insertar / mover) ----------
 	function allow(e: DragEvent, key: string) {
@@ -89,6 +95,7 @@
 
 	// ---------- selección por clic / marco ----------
 	function clickNode(e: MouseEvent, id: string) {
+		progEdit = null;
 		if (e.ctrlKey || e.metaKey || e.shiftKey) toggleSelect(id);
 		else selectOnly(id);
 	}
@@ -209,7 +216,7 @@
 				{/if}
 			{/each}
 			{#each flow.nodes as n (n.id)}
-				{@const active = n.stmtId && $activeStmtId === n.stmtId}
+				{@const active = $activeStmtId === (n.stmtId ?? n.id)}
 				{@const selected = n.stmtId && $selection.has(n.stmtId)}
 				{@const moving = n.stmtId && movingId === n.stmtId}
 				{@const stroke = active ? '#fbbf24' : selected ? '#38bdf8' : strokeFor(n)}
@@ -240,6 +247,17 @@
 					onkeydown={() => {}}
 					title="clic: seleccionar · arrastrar: mover"
 					class="absolute cursor-grab rounded active:cursor-grabbing"
+					style="left:{n.cx - n.w / 2}px; top:{n.y}px; width:{n.w}px; height:{n.h}px"
+				></div>
+			{:else if n.role}
+				<div
+					data-node
+					role="button"
+					tabindex="0"
+					onclick={() => openProgram(n.role!)}
+					onkeydown={() => {}}
+					title={n.role === 'start' ? 'clic: nombre y parámetros de la función' : 'clic: variable a devolver'}
+					class="absolute cursor-pointer rounded"
 					style="left:{n.cx - n.w / 2}px; top:{n.y}px; width:{n.w}px; height:{n.h}px"
 				></div>
 			{/if}
@@ -282,6 +300,10 @@
 	{#if single}
 		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-300 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-sky-800 dark:bg-zinc-900/95">
 			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} oncopy={copy} onpaste={paste} onclose={() => clearSelection()} />
+		</div>
+	{:else if progEdit}
+		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-emerald-300 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-zinc-900/95">
+			<ProgramEditor {program} role={progEdit} {onchange} onclose={() => (progEdit = null)} />
 		</div>
 	{/if}
 </div>

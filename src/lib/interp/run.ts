@@ -49,7 +49,24 @@ function snapshot(ctx: Ctx, nodeId: string): Snapshot {
 export function* execute(program: Program, inputRaw = ''): Generator<Step, void, string> {
 	_steps = 0;
 	const ctx: Ctx = { vars: new Map(), inputs: tokenizeInput(inputRaw), inputPos: 0, output: [] };
+
+	// Los parámetros del Inicio se piden como entradas (precarga primero, si no al usuario).
+	for (const name of program.params ?? []) {
+		let raw: string;
+		if (ctx.inputPos < ctx.inputs.length) raw = ctx.inputs[ctx.inputPos++];
+		else raw = (yield { type: 'input', varName: name, nodeId: 'inicio' }) ?? '';
+		ctx.vars.set(name, parseToken(raw));
+	}
+
 	yield* runBlock(program.body, ctx);
+
+	// Retorno (Fin): muestra el valor devuelto en la salida.
+	if (program.returnVar) {
+		const rv = program.returnVar;
+		const val = ctx.vars.has(rv) ? format(ctx.vars.get(rv)!) : '(indefinida)';
+		ctx.output.push(`↩ retorna ${rv} = ${val}`);
+		yield { type: 'step', snap: snapshot(ctx, 'fin') };
+	}
 }
 
 function* runBlock(body: Stmt[], ctx: Ctx): Generator<Step, void, string> {
