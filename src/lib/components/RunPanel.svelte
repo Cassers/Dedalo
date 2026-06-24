@@ -121,17 +121,17 @@
 </script>
 
 <div class="flex h-full flex-col gap-2 p-2">
-	<div>
-		<div class="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">
-			Entrada precargada <span class="normal-case text-zinc-600">(opcional · si falta, se te pedirá al correr)</span>
-		</div>
+	<details class="text-[11px]">
+		<summary class="cursor-pointer select-none text-zinc-500 hover:text-zinc-300">
+			Entrada precargada <span class="text-zinc-600">(opcional)</span>
+		</summary>
 		<textarea
 			bind:value={input}
 			rows="2"
-			placeholder="déjalo vacío para escribir los valores cuando el programa los pida"
-			class="w-full rounded border border-zinc-700 bg-zinc-950 p-2 font-mono text-xs text-zinc-100 focus:border-sky-500 focus:outline-none"
+			placeholder="valores separados por espacios/saltos; si lo dejas vacío se te pedirán al correr"
+			class="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 p-2 font-mono text-xs text-zinc-100 focus:border-sky-500 focus:outline-none"
 		></textarea>
-	</div>
+	</details>
 
 	{#if waiting}
 		<div class="rounded border border-sky-700 bg-sky-950/40 p-2">
