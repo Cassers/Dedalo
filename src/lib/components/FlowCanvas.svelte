@@ -5,6 +5,7 @@
 	import { insertAt, moveTo, moveGroup, removeStmt, findStmt, selectionRoots, locateFull } from '$lib/ir/edit';
 	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection } from '$lib/dfd/active';
 	import { dragging, clipboard } from '$lib/dnd';
+	import { isDark } from '$lib/theme';
 	import { get } from 'svelte/store';
 	import NodeEditor from './NodeEditor.svelte';
 
@@ -28,17 +29,20 @@
 		return `${n.cx},${n.y} ${x + n.w},${n.y + n.h / 2} ${n.cx},${n.y + n.h} ${x},${n.y + n.h / 2}`;
 	}
 	function fillFor(n: FlowNode) {
-		if (n.shape === 'oval') return n.label === 'Fin' ? '#4c0519' : '#052e16';
-		if (n.shape === 'io') return 'rgba(124,58,237,0.28)';
-		if (n.shape === 'decision') return 'rgba(180,83,9,0.28)';
-		return '#27272a';
+		const d = $isDark;
+		if (n.shape === 'oval') return n.label === 'Fin' ? (d ? '#4c0519' : '#ffe4e6') : d ? '#052e16' : '#dcfce7';
+		if (n.shape === 'io') return d ? 'rgba(124,58,237,0.28)' : '#ede9fe';
+		if (n.shape === 'decision') return d ? 'rgba(180,83,9,0.28)' : '#fef3c7';
+		return d ? '#27272a' : '#f4f4f5';
 	}
 	function strokeFor(n: FlowNode) {
 		if (n.shape === 'oval') return n.label === 'Fin' ? '#e11d48' : '#10b981';
 		if (n.shape === 'io') return '#8b5cf6';
 		if (n.shape === 'decision') return '#f59e0b';
-		return '#71717a';
+		return $isDark ? '#71717a' : '#a1a1aa';
 	}
+	const edgeColor = $derived($isDark ? '#71717a' : '#a1a1aa');
+	const textColor = $derived($isDark ? '#e4e4e7' : '#27272a');
 	const trunc = (s: string) => (s.length > 26 ? s.slice(0, 25) + '…' : s);
 
 	// ---------- drag-and-drop (insertar / mover) ----------
@@ -192,13 +196,13 @@
 		<svg class="absolute inset-0 pointer-events-none" width={flow.width} height={flow.height}>
 			<defs>
 				<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-					<path d="M 0 0 L 10 5 L 0 10 z" fill="#71717a" />
+					<path d="M 0 0 L 10 5 L 0 10 z" fill={edgeColor} />
 				</marker>
 			</defs>
 			{#each flow.edges as e (e.id)}
-				<path d={e.d} fill="none" stroke="#71717a" stroke-width="1.6" marker-end={e.arrow === false ? undefined : 'url(#arrow)'} />
+				<path d={e.d} fill="none" stroke={edgeColor} stroke-width="1.6" marker-end={e.arrow === false ? undefined : 'url(#arrow)'} />
 				{#if e.label}
-					<text x={e.lx} y={e.ly} fill="#a1a1aa" font-size="11" font-weight="600" text-anchor="middle">{e.label}</text>
+					<text x={e.lx} y={e.ly} fill={textColor} font-size="11" font-weight="600" text-anchor="middle">{e.label}</text>
 				{/if}
 			{/each}
 			{#each flow.nodes as n (n.id)}
@@ -214,7 +218,7 @@
 					{:else}
 						<polygon points={shapePoints(n)} fill={fillFor(n)} {stroke} stroke-width={selected ? 3 : 2} stroke-dasharray={moving ? '5 4' : undefined} />
 					{/if}
-					<text x={n.cx} y={n.y + n.h / 2 + 4} fill="#e4e4e7" font-size="12.5" text-anchor="middle" font-family="ui-monospace,monospace">{trunc(n.label)}</text>
+					<text x={n.cx} y={n.y + n.h / 2 + 4} fill={textColor} font-size="12.5" text-anchor="middle" font-family="ui-monospace,monospace">{trunc(n.label)}</text>
 				</g>
 			{/each}
 		</svg>
@@ -263,7 +267,7 @@
 
 	<!-- barra de selección múltiple -->
 	{#if $selection.size > 1}
-		<div data-panel class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-800 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
+		<div data-panel class="absolute left-3 top-3 flex items-center gap-2 rounded-lg border border-sky-300 bg-white/95 px-3 py-1.5 text-xs text-zinc-700 shadow-xl backdrop-blur dark:border-sky-800 dark:bg-zinc-900/95 dark:text-zinc-200">
 			<span class="font-semibold text-sky-300">{$selection.size} seleccionados</span>
 			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={copy}>Copiar</button>
 			<button class="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800" onclick={duplicate}>Duplicar</button>
@@ -273,12 +277,12 @@
 
 	<!-- editor del bloque (selección única) -->
 	{#if single}
-		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-800 bg-zinc-900/95 p-3 shadow-xl backdrop-blur">
+		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-300 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-sky-800 dark:bg-zinc-900/95">
 			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} oncopy={copy} onpaste={paste} onclose={() => clearSelection()} />
 		</div>
 	{/if}
 </div>
 
-<p class="pointer-events-none fixed bottom-2 left-1/2 z-10 -translate-x-1/2 rounded bg-zinc-900/70 px-2 py-0.5 text-[11px] text-zinc-500">
+<p class="pointer-events-none fixed bottom-2 left-1/2 z-10 -translate-x-1/2 rounded bg-white/80 px-2 py-0.5 text-[11px] text-zinc-500 dark:bg-zinc-900/70">
 	arrastra para seleccionar varios · Ctrl/⌘+C copiar · Ctrl/⌘+V pegar · Supr borrar
 </p>

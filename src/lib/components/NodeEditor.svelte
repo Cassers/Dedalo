@@ -23,8 +23,9 @@
 	} = $props();
 
 	const lbl = 'mb-1 text-[10px] uppercase tracking-wide text-zinc-500';
+	const btn = 'rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800';
 	const inp =
-		'w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 font-mono text-xs text-zinc-100 focus:border-sky-400 focus:outline-none';
+		'w-full rounded border border-zinc-300 bg-zinc-50 px-2 py-1 font-mono text-xs text-zinc-900 focus:border-sky-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100';
 
 	function setExpr(el: HTMLInputElement, apply: (e: NonNullable<ReturnType<typeof tryParseExpr>['expr']>) => void) {
 		const r = tryParseExpr(el.value);
@@ -39,8 +40,8 @@
 </script>
 
 <div class="mb-2 flex items-center justify-between">
-	<span class="text-xs font-semibold text-zinc-200">Editar · {META[stmt.kind].label}</span>
-	<button class="text-zinc-500 hover:text-zinc-200" onclick={onclose} title="cerrar">✕</button>
+	<span class="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Editar · {META[stmt.kind].label}</span>
+	<button class="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200" onclick={onclose} title="cerrar">✕</button>
 </div>
 
 <div class="flex flex-col gap-2">
@@ -96,9 +97,9 @@
 	{/if}
 
 	<div class="mt-1 flex flex-wrap gap-2">
-		<button class="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={oncopy}>Copiar</button>
-		<button class="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={onpaste}>Pegar</button>
-		<button class="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={onduplicate}>Duplicar</button>
-		<button class="rounded border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950/40" onclick={ondelete}>Borrar</button>
+		<button class={btn} onclick={oncopy}>Copiar</button>
+		<button class={btn} onclick={onpaste}>Pegar</button>
+		<button class={btn} onclick={onduplicate}>Duplicar</button>
+		<button class="rounded border border-rose-300 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40" onclick={ondelete}>Borrar</button>
 	</div>
 </div>

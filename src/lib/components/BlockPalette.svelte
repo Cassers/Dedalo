@@ -21,7 +21,7 @@
 			draggable="true"
 			ondragstart={(e) => onDragStart(e, b.kind)}
 			ondragend={onDragEnd}
-			class="cursor-grab rounded-lg border-2 bg-zinc-900 px-3 py-2 text-sm font-medium active:cursor-grabbing {b.chip}"
+			class="cursor-grab rounded-lg border-2 bg-white px-3 py-2 text-sm font-medium active:cursor-grabbing dark:bg-zinc-900 {b.chip}"
 		>
 			{#if b.shape === 'decision'}◇{:else if b.shape === 'io'}▱{:else if b.shape === 'loop'}↻{:else}▭{/if}
 			{b.label}

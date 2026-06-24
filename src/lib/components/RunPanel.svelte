@@ -131,13 +131,13 @@
 			bind:value={input}
 			rows="2"
 			placeholder="valores separados por espacios/saltos; si lo dejas vacío se te pedirán al correr"
-			class="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 p-2 font-mono text-xs text-zinc-100 focus:border-sky-500 focus:outline-none"
+			class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 p-2 font-mono text-xs text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
 		></textarea>
 	</details>
 
 	{#if waiting}
-		<div class="rounded border border-sky-700 bg-sky-950/40 p-2">
-			<div class="mb-1 text-xs text-sky-200">El programa pide: <b class="font-mono">{waiting.varName}</b> = ?</div>
+		<div class="rounded border border-sky-400 bg-sky-50 p-2 dark:border-sky-700 dark:bg-sky-950/40">
+			<div class="mb-1 text-xs text-sky-700 dark:text-sky-200">El programa pide: <b class="font-mono">{waiting.varName}</b> = ?</div>
 			<div class="flex gap-2">
 				<!-- svelte-ignore a11y_autofocus -->
 				<input
@@ -146,7 +146,7 @@
 					autofocus
 					onkeydown={(e) => { if (e.key === 'Enter') submitInput(); }}
 					placeholder="escribe un valor y Enter"
-					class="flex-1 rounded border border-sky-600 bg-zinc-950 px-2 py-1 font-mono text-xs text-zinc-100 focus:outline-none"
+					class="flex-1 rounded border border-sky-500 bg-white px-2 py-1 font-mono text-xs text-zinc-900 focus:outline-none dark:bg-zinc-950 dark:text-zinc-100"
 				/>
 				<button class="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500" onclick={submitInput}>Enviar</button>
 			</div>
@@ -159,8 +159,8 @@
 		{:else}
 			<button class="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50" onclick={run} disabled={!!waiting}>▶ Correr</button>
 		{/if}
-		<button class="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50" onclick={() => step()} disabled={running || !!waiting}>⏭ Paso</button>
-		<button class="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-800" onclick={reset}>↺ Reiniciar</button>
+		<button class="rounded border border-zinc-300 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-200 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800" onclick={() => step()} disabled={running || !!waiting}>⏭ Paso</button>
+		<button class="rounded border border-zinc-300 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-200 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800" onclick={reset}>↺ Reiniciar</button>
 		<label class="ml-auto flex items-center gap-1 text-[11px] text-zinc-500">
 			velocidad
 			<input type="range" min="40" max="800" step="20" bind:value={speed} class="w-20" />
@@ -168,24 +168,24 @@
 	</div>
 
 	{#if error}
-		<div class="rounded border border-rose-800 bg-rose-950/40 p-2 text-xs text-rose-300">⚠ {error}</div>
+		<div class="rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">⚠ {error}</div>
 	{/if}
 
 	<div class="grid min-h-0 flex-1 grid-rows-2 gap-2">
 		<div class="flex min-h-0 flex-col">
 			<div class="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">Salida {finished ? '· terminó' : ''}</div>
-			<pre class="flex-1 overflow-auto rounded border border-zinc-800 bg-black p-2 font-mono text-xs text-emerald-300">{output.join('\n')}</pre>
+			<pre class="flex-1 overflow-auto rounded border border-zinc-300 bg-zinc-900 p-2 font-mono text-xs text-emerald-300 dark:border-zinc-800 dark:bg-black">{output.join('\n')}</pre>
 		</div>
 		<div class="flex min-h-0 flex-col">
 			<div class="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">Variables</div>
-			<div class="flex-1 overflow-auto rounded border border-zinc-800 bg-zinc-950 p-2">
+			<div class="flex-1 overflow-auto rounded border border-zinc-300 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
 				{#each Object.entries(vars) as [k, val] (k)}
 					<div class="flex justify-between font-mono text-xs">
-						<span class="text-sky-300">{k}</span>
-						<span class="text-zinc-200">{String(val)}</span>
+						<span class="text-sky-600 dark:text-sky-300">{k}</span>
+						<span class="text-zinc-800 dark:text-zinc-200">{String(val)}</span>
 					</div>
 				{:else}
-					<div class="text-xs text-zinc-600">— sin variables aún —</div>
+					<div class="text-xs text-zinc-400 dark:text-zinc-600">— sin variables aún —</div>
 				{/each}
 			</div>
 		</div>
