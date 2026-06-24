@@ -5,7 +5,7 @@
 	import FlowCanvas from '$lib/components/FlowCanvas.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import RunPanel from '$lib/components/RunPanel.svelte';
-	import { selectedStmtId } from '$lib/dfd/active';
+	import { clearSelection } from '$lib/dfd/active';
 
 	let program = $state<Program>(SAMPLES[0].build());
 	let input = $state(SAMPLES[0].input);
@@ -21,7 +21,7 @@
 			program = { name: 'Mi algoritmo', body: [] };
 			input = '';
 			sampleKey = key;
-			selectedStmtId.set(null);
+			clearSelection();
 			return;
 		}
 		const s = SAMPLES.find((x) => x.key === key);
@@ -29,7 +29,7 @@
 		program = s.build();
 		input = s.input;
 		sampleKey = key;
-		selectedStmtId.set(null);
+		clearSelection();
 	}
 </script>
 

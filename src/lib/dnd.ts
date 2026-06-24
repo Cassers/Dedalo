@@ -8,3 +8,6 @@ export type DragPayload =
 	| null;
 
 export const dragging = writable<DragPayload>(null);
+
+/** Portapapeles: bloques copiados (clonados con ids nuevos al pegar). */
+export const clipboard = writable<Stmt[]>([]);

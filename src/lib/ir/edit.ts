@@ -98,6 +98,66 @@ export function moveTo(
 	return insertAt(program, parentId, branch, idx, stmt);
 }
 
+/** Ubicación completa de una sentencia: bloque padre, rama e índice. */
+export function locateFull(
+	program: Program,
+	id: string
+): { parentId: string | null; branch: Branch; index: number } | null {
+	const search = (body: Stmt[], parentId: string | null, branch: Branch): ReturnType<typeof locateFull> => {
+		const i = body.findIndex((s) => s.id === id);
+		if (i >= 0) return { parentId, branch, index: i };
+		for (const s of body) {
+			if (s.kind === 'if') {
+				const a = search(s.then, s.id, 'then') ?? search(s.else, s.id, 'else');
+				if (a) return a;
+			} else if (s.kind === 'while' || s.kind === 'for' || s.kind === 'dowhile') {
+				const a = search(s.body, s.id, 'body');
+				if (a) return a;
+			}
+		}
+		return null;
+	};
+	return search(program.body, null, 'body');
+}
+
+/** Sentencias seleccionadas que NO son descendientes de otra seleccionada,
+ * en orden de documento (las "raíces" de la selección, para operar en grupo). */
+export function selectionRoots(program: Program, ids: Set<string>): Stmt[] {
+	const out: Stmt[] = [];
+	const walk = (body: Stmt[], underSel: boolean) => {
+		for (const s of body) {
+			const sel = ids.has(s.id);
+			if (sel && !underSel) out.push(s);
+			for (const list of childLists(s)) walk(list, underSel || sel);
+		}
+	};
+	walk(program.body, false);
+	return out;
+}
+
+/** Mueve un grupo de bloques (por sus ids raíz) al destino, en orden. */
+export function moveGroup(
+	program: Program,
+	ids: Set<string>,
+	parentId: string | null,
+	branch: Branch,
+	index: number
+): boolean {
+	const roots = selectionRoots(program, ids);
+	if (!roots.length) return false;
+	// Guardas: no soltar dentro de sí mismo o de sus descendientes.
+	for (const r of roots) {
+		if (r.id === parentId) return false;
+		if (parentId !== null && isAncestor(program, r.id, parentId)) return false;
+	}
+	const detached = roots.map((r) => detachStmt(program, r.id)).filter((s): s is Stmt => s != null);
+	const block = getBlock(program, parentId, branch);
+	if (!block) return false;
+	let i = Math.max(0, Math.min(index, block.length));
+	for (const s of detached) block.splice(i++, 0, s);
+	return true;
+}
+
 /** Lista de sentencias que contiene directamente a `id`. */
 function blockOf(program: Program, id: string): Stmt[] | null {
 	const walk = (body: Stmt[]): Stmt[] | null => {

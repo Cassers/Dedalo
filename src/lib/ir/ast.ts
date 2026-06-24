@@ -157,6 +157,27 @@ export function createStmt(kind: Stmt['kind']): Stmt {
 	}
 }
 
+/** Clona una sentencia (y sus hijos) con ids nuevos. Las expresiones no llevan id. */
+export function cloneStmt(s: Stmt): Stmt {
+	const e = (x: Expr): Expr => structuredClone(x);
+	switch (s.kind) {
+		case 'assign':
+			return { kind: 'assign', id: newId('a'), target: s.target, expr: e(s.expr) };
+		case 'read':
+			return { kind: 'read', id: newId('r'), vars: [...s.vars] };
+		case 'write':
+			return { kind: 'write', id: newId('w'), exprs: s.exprs.map(e) };
+		case 'if':
+			return { kind: 'if', id: newId('if'), cond: e(s.cond), then: s.then.map(cloneStmt), else: s.else.map(cloneStmt) };
+		case 'while':
+			return { kind: 'while', id: newId('wh'), cond: e(s.cond), body: s.body.map(cloneStmt) };
+		case 'dowhile':
+			return { kind: 'dowhile', id: newId('do'), body: s.body.map(cloneStmt), cond: e(s.cond) };
+		case 'for':
+			return { kind: 'for', id: newId('for'), var: s.var, from: e(s.from), to: e(s.to), step: e(s.step), body: s.body.map(cloneStmt) };
+	}
+}
+
 /** Busca un nodo (sentencia) por id en todo el árbol. */
 export function findStmt(body: Stmt[], id: string): Stmt | undefined {
 	for (const s of body) {
