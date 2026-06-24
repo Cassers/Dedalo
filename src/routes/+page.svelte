@@ -2,7 +2,7 @@
 	import type { Program } from '$lib/ir/ast';
 	import { SAMPLES } from '$lib/ir/samples';
 	import BlockPalette from '$lib/components/BlockPalette.svelte';
-	import BlockTree from '$lib/components/BlockTree.svelte';
+	import FlowCanvas from '$lib/components/FlowCanvas.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import RunPanel from '$lib/components/RunPanel.svelte';
 	import { selectedStmtId } from '$lib/dfd/active';
@@ -61,19 +61,9 @@
 			</div>
 		</aside>
 
-		<!-- centro: lienzo de bloques (arrastra aquí) -->
-		<main class="min-w-0 flex-1 overflow-auto bg-[radial-gradient(circle,#18181b_1px,transparent_1px)] [background-size:22px_22px]">
-			<div class="mx-auto flex max-w-2xl flex-col items-stretch gap-1 p-6">
-				<div class="mx-auto rounded-full border-2 border-emerald-600 bg-emerald-950/50 px-6 py-1.5 text-sm font-semibold text-emerald-200">
-					Inicio
-				</div>
-				<div class="mx-auto h-3 w-0.5 bg-zinc-700"></div>
-				<BlockTree {program} block={program.body} onchange={touch} />
-				<div class="mx-auto h-3 w-0.5 bg-zinc-700"></div>
-				<div class="mx-auto rounded-full border-2 border-rose-600 bg-rose-950/50 px-6 py-1.5 text-sm font-semibold text-rose-200">
-					Fin
-				</div>
-			</div>
+		<!-- centro: diagrama de flujo (arrastra aquí) -->
+		<main class="min-w-0 flex-1 bg-[radial-gradient(circle,#18181b_1px,transparent_1px)] [background-size:22px_22px]">
+			<FlowCanvas {program} onchange={touch} />
 		</main>
 
 		<!-- derecha: código + ejecución -->

@@ -20,11 +20,13 @@ pnpm check    # type-check con svelte-check
 
 ## Qué hace (MVP)
 
-- **Editor de bloques estilo Scratch** (drag-and-drop): paleta de bloques DFD a la izquierda;
-  los arrastras al lienzo central y se **encajan/anidan** en el flujo (estructurado por
-  construcción → siempre genera código válido). Arrastra un bloque existente (por su grip ⠿)
-  para reordenarlo o moverlo a otra rama. Edición inline de expresiones (`a + b`, `n % 2 == 0`,
-  `raiz(x)`) y borrado por bloque.
+- **Diagrama de flujo estilo PSeInt** (SVG, drag-and-drop): paleta de bloques DFD a la
+  izquierda; los arrastras al lienzo central y se insertan en el flujo, dibujado con **figuras
+  reales** (óvalo, rectángulo, paralelogramo, rombo) y **líneas con flechas**. Las decisiones
+  **se bifurcan en dos caminos Sí/No** y se reúnen; los ciclos dibujan su back-edge. El diagrama
+  se **deriva** del AST (estructurado por construcción → siempre genera código válido). Clic en
+  una figura para editarla en el panel flotante; arrastra una figura para moverla; suelta sobre
+  las líneas para insertar.
 - **Código en vivo** (panel derecho): el mismo algoritmo en Pseudocódigo / Python / JavaScript,
   actualizándose con cada cambio.
 - **Ejecución en el navegador**: intérprete del AST con Correr / Paso / Pausa / Reiniciar,
@@ -43,8 +45,9 @@ El **AST estructurado** (`src/lib/ir/ast.ts`) es el hub: todo deriva de él.
 | Ejemplos | `src/lib/ir/samples.ts` | algoritmos de arranque |
 | Codegen | `src/lib/codegen/index.ts` | AST → pseudo/python/js (un `Dialect` por lenguaje) |
 | Intérprete | `src/lib/interp/run.ts` | recorre el AST (generador, paso a paso) |
-| Bloques | `src/lib/dfd/blockmeta.ts`, `labels.ts`, `active.ts` | metadatos/etiquetas/estado de bloques |
-| UI | `BlockPalette.svelte`, `BlockTree.svelte`, `CodePanel.svelte`, `RunPanel.svelte`, `+page.svelte` | 3 zonas: paleta · lienzo de bloques · código+run |
+| Layout flujo | `src/lib/dfd/flowlayout.ts` | AST → geometría (figuras, líneas ortogonales, ramas, drops) |
+| Bloques | `src/lib/dfd/blockmeta.ts`, `labels.ts`, `active.ts` | metadatos/etiquetas/estado |
+| UI | `BlockPalette`, `FlowCanvas` (+`NodeEditor`), `CodePanel`, `RunPanel`, `+page.svelte` | 3 zonas: paleta · diagrama de flujo · código+run |
 
 ### Sentencias soportadas
 `Asignar` (proceso) · `Leer`/`Escribir` (entrada-salida) · `Si/Sino` (decisión) ·
@@ -62,7 +65,7 @@ adapter-static (SPA). pnpm. (Sin dependencias de runtime: el lienzo es DOM propi
 
 ## Roadmap
 
-- [ ] Símbolos DFD con formas reales (rombo/paralelogramo) en los bloques del lienzo.
+- [ ] Afinar el ruteo de líneas (salida de ciclos por el margen, evitar cruces).
 - [ ] Codegen para lenguajes tipados (C, C++, Java) con inferencia simple de tipos.
 - [ ] Retos/niveles gamificados (enunciado + casos) y juicio real vía Probator/Piston.
 - [ ] Código nativo → DFD (parsers) — fuera del MVP.
