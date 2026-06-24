@@ -100,6 +100,8 @@
 		if (e.button !== 0) return;
 		// No iniciar marco si el clic fue sobre un bloque o un panel flotante.
 		if ((e.target as HTMLElement).closest('[data-node],[data-panel]')) return;
+		e.preventDefault(); // evita que el arrastre seleccione texto
+		document.documentElement.style.userSelect = 'none';
 		const p = localPt(e);
 		marq = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
 	}
@@ -117,6 +119,7 @@
 	}
 	function winUp() {
 		if (!marq) return;
+		document.documentElement.style.userSelect = '';
 		const r = marqRect();
 		if (r.w < 4 && r.h < 4) clearSelection(); // clic en vacío = deseleccionar
 		marq = null;
