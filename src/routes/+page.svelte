@@ -11,9 +11,41 @@
 	let input = $state(SAMPLES[0].input);
 	let sampleKey = $state(SAMPLES[0].key);
 
+	// --- Historial deshacer/rehacer ---
+	const snap = () => $state.snapshot(program) as Program; // copia plana profunda
+	let undoStack = $state<Program[]>([]);
+	let redoStack = $state<Program[]>([]);
+	let committed: Program = snap(); // estado confirmado actual
+
 	// Reasignar el objeto fuerza el recálculo de código + diagrama.
 	function touch() {
+		undoStack = [...undoStack.slice(-99), committed]; // guarda el estado previo
+		redoStack = [];
+		committed = snap();
 		program = { ...program, body: program.body };
+	}
+	function undo() {
+		if (!undoStack.length) return;
+		redoStack = [...redoStack, committed];
+		const prev = undoStack[undoStack.length - 1];
+		undoStack = undoStack.slice(0, -1);
+		program = structuredClone(prev);
+		committed = structuredClone(prev);
+		clearSelection();
+	}
+	function redo() {
+		if (!redoStack.length) return;
+		undoStack = [...undoStack, committed];
+		const next = redoStack[redoStack.length - 1];
+		redoStack = redoStack.slice(0, -1);
+		program = structuredClone(next);
+		committed = structuredClone(next);
+		clearSelection();
+	}
+	function resetHistory() {
+		undoStack = [];
+		redoStack = [];
+		committed = snap();
 	}
 
 	function loadSample(key: string) {
@@ -22,6 +54,7 @@
 			input = '';
 			sampleKey = key;
 			clearSelection();
+			resetHistory();
 			return;
 		}
 		const s = SAMPLES.find((x) => x.key === key);
@@ -30,13 +63,45 @@
 		input = s.input;
 		sampleKey = key;
 		clearSelection();
+		resetHistory();
+	}
+
+	function onKey(e: KeyboardEvent) {
+		const t = e.target as HTMLElement;
+		if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+		const mod = e.ctrlKey || e.metaKey;
+		if (!mod) return;
+		const k = e.key.toLowerCase();
+		if (k === 'z' && !e.shiftKey) {
+			undo();
+			e.preventDefault();
+		} else if (k === 'y' || (k === 'z' && e.shiftKey)) {
+			redo();
+			e.preventDefault();
+		}
 	}
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <div class="flex h-screen flex-col bg-zinc-950">
 	<header class="flex items-center gap-3 border-b border-zinc-800 px-4 py-2">
 		<span class="text-lg font-bold text-zinc-100">Dédalo</span>
 		<span class="text-xs text-zinc-500">programa con diagramas de flujo</span>
+		<div class="ml-3 flex items-center gap-1">
+			<button
+				onclick={undo}
+				disabled={!undoStack.length}
+				title="Deshacer (Ctrl/⌘+Z)"
+				class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+			>↶</button>
+			<button
+				onclick={redo}
+				disabled={!redoStack.length}
+				title="Rehacer (Ctrl/⌘+Shift+Z)"
+				class="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+			>↷</button>
+		</div>
 		<div class="ml-auto flex items-center gap-2">
 			<span class="text-xs text-zinc-500">empezar con</span>
 			<select
