@@ -1,0 +1,47 @@
+# Stack de producción de Dédalo (desplegado vía Dokploy como servicio Compose).
+# Solo postgres + app (Dédalo NO usa Piston: el juicio de código se delega a la API
+# de Probator). Dokploy/Traefik inyecta el dominio; nada se publica salvo la app.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dedalo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dedalo}
+      POSTGRES_DB: dedalo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://dedalo:${POSTGRES_PASSWORD:-dedalo}@postgres:5432/dedalo
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Discord OAuth (login). Vacío = login deshabilitado.
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      # Opcional: exigir pertenencia a un servidor de Discord.
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      # Integración opcional con Probator (Fase 2).
+      PROBATOR_API_URL: ${PROBATOR_API_URL:-}
+      PROBATOR_API_KEY: ${PROBATOR_API_KEY:-}
+    depends_on:
+      - postgres
+    expose:
+      - '3000'
+    # default = interno (alcanza postgres); dokploy-network = ruteo Traefik.
+    networks:
+      - default
+      - dokploy-network
+    restart: always
+
+volumes:
+  pgdata:
+
+networks:
+  dokploy-network:
+    external: true

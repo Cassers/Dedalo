@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -8,8 +8,9 @@ const config = {
 	// Svelte 5 activa runes por archivo automáticamente, así que no forzamos `runes` global.
 	preprocess: vitePreprocess({ script: true }),
 	kit: {
-		// SPA estática: sin backend en el MVP (todo corre en el navegador).
-		adapter: adapter({ fallback: 'index.html' })
+		// adapter-node: ahora hay backend (auth Discord, BD, API). La página del editor
+		// sigue siendo client-side (ssr=false en +page.ts); hooks/endpoints corren en server.
+		adapter: adapter()
 	}
 };
 

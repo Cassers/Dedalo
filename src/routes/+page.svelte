@@ -7,6 +7,14 @@
 	import RunPanel from '$lib/components/RunPanel.svelte';
 	import { clearSelection } from '$lib/dfd/active';
 	import { theme } from '$lib/theme';
+	import type { LayoutData } from './$types';
+
+	let { data }: { data: LayoutData } = $props();
+	const avatarUrl = $derived(
+		data.user?.avatar
+			? `https://cdn.discordapp.com/avatars/${data.user.discordId}/${data.user.avatar}.png?size=64`
+			: null
+	);
 
 	let program = $state<Program>(SAMPLES[0].build());
 	let input = $state(SAMPLES[0].input);
@@ -110,6 +118,22 @@
 			>↷</button>
 		</div>
 		<div class="ml-auto flex items-center gap-2">
+			<!-- sesión -->
+			{#if data.user}
+				<div class="flex items-center gap-2">
+					{#if avatarUrl}
+						<img src={avatarUrl} alt="" class="h-6 w-6 rounded-full" />
+					{/if}
+					<span class="text-xs text-zinc-600 dark:text-zinc-300">{data.user.displayName || data.user.username}</span>
+					<form method="POST" action="/auth/logout">
+						<button class="rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800" title="Cerrar sesión">Salir</button>
+					</form>
+				</div>
+			{:else if data.discordEnabled}
+				<a href="/auth/discord" class="flex items-center gap-1.5 rounded bg-[#5865F2] px-3 py-1 text-xs font-medium text-white hover:bg-[#4752c4]">
+					Entrar con Discord
+				</a>
+			{/if}
 			<select
 				value={$theme}
 				onchange={(e) => theme.set((e.target as HTMLSelectElement).value as 'light' | 'dark' | 'auto')}
