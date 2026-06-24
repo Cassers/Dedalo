@@ -19,6 +19,7 @@
 	let waiting = $state<{ varName: string } | null>(null);
 	let inputValue = $state('');
 	let inputEl = $state<HTMLInputElement | null>(null);
+	let usePreload = $state(false); // solo se usa la entrada precargada si el panel está abierto
 
 	function reset() {
 		if (timer) clearTimeout(timer);
@@ -35,7 +36,8 @@
 
 	function ensure() {
 		if (!gen) {
-			gen = execute(program, input);
+			// Si el panel de entrada precargada está cerrado, se ignora → todo interactivo.
+			gen = execute(program, usePreload ? input : '');
 			finished = false;
 			error = null;
 		}
@@ -121,9 +123,9 @@
 </script>
 
 <div class="flex h-full flex-col gap-2 p-2">
-	<details class="text-[11px]">
+	<details class="text-[11px]" ontoggle={(e) => { usePreload = (e.currentTarget as HTMLDetailsElement).open; reset(); }}>
 		<summary class="cursor-pointer select-none text-zinc-500 hover:text-zinc-300">
-			Entrada precargada <span class="text-zinc-600">(opcional)</span>
+			Entrada precargada <span class="text-zinc-600">(opcional · solo se usa si está abierta)</span>
 		</summary>
 		<textarea
 			bind:value={input}
