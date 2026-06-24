@@ -18,6 +18,11 @@ export interface Snapshot {
 	output: string[];
 }
 
+/** Lo que el generador cede en cada paso: o avanzó una sentencia, o PIDE un valor. */
+export type Step =
+	| { type: 'step'; snap: Snapshot }
+	| { type: 'input'; varName: string; nodeId: string };
+
 export class RuntimeError extends Error {}
 
 interface Ctx {
@@ -37,41 +42,50 @@ function snapshot(ctx: Ctx, nodeId: string): Snapshot {
 }
 
 /**
- * Ejecuta el programa. Devuelve un generador: hacé `next()` para avanzar un
- * paso (una sentencia). Cada paso devuelve un Snapshot. Al terminar, `done`.
+ * Ejecuta el programa. Generador bidireccional: `next()` avanza un paso; cuando
+ * cede `{type:'input'}` hay que reanudar con `next(valorEscrito)`. Si hay datos
+ * precargados (inputRaw) se consumen primero; si faltan, se PIDE al usuario.
  */
-export function* execute(program: Program, inputRaw = ''): Generator<Snapshot, void, void> {
+export function* execute(program: Program, inputRaw = ''): Generator<Step, void, string> {
 	_steps = 0;
 	const ctx: Ctx = { vars: new Map(), inputs: tokenizeInput(inputRaw), inputPos: 0, output: [] };
 	yield* runBlock(program.body, ctx);
 }
 
-function* runBlock(body: Stmt[], ctx: Ctx): Generator<Snapshot, void, void> {
+function* runBlock(body: Stmt[], ctx: Ctx): Generator<Step, void, string> {
 	for (const s of body) yield* runStmt(s, ctx);
 }
 
-function* runStmt(s: Stmt, ctx: Ctx): Generator<Snapshot, void, void> {
+function* runStmt(s: Stmt, ctx: Ctx): Generator<Step, void, string> {
 	switch (s.kind) {
 		case 'assign':
 			ctx.vars.set(s.target, evalExpr(s.expr, ctx));
-			yield snapshot(ctx, s.id);
+			yield { type: 'step', snap: snapshot(ctx, s.id) };
 			return;
 		case 'read':
-			for (const name of s.vars) ctx.vars.set(name, nextInput(ctx, name));
-			yield snapshot(ctx, s.id);
+			for (const name of s.vars) {
+				let raw: string;
+				if (ctx.inputPos < ctx.inputs.length) {
+					raw = ctx.inputs[ctx.inputPos++]; // dato precargado
+				} else {
+					raw = (yield { type: 'input', varName: name, nodeId: s.id }) ?? ''; // pide al usuario
+				}
+				ctx.vars.set(name, parseToken(raw));
+			}
+			yield { type: 'step', snap: snapshot(ctx, s.id) };
 			return;
 		case 'write':
 			ctx.output.push(s.exprs.map((e) => format(evalExpr(e, ctx))).join(' '));
-			yield snapshot(ctx, s.id);
+			yield { type: 'step', snap: snapshot(ctx, s.id) };
 			return;
 		case 'if':
-			yield snapshot(ctx, s.id); // resalta el rombo de decisión
+			yield { type: 'step', snap: snapshot(ctx, s.id) }; // resalta el rombo de decisión
 			yield* runBlock(asBool(evalExpr(s.cond, ctx)) ? s.then : s.else, ctx);
 			return;
 		case 'while':
 			// Resalta el nodo del ciclo en cada chequeo de condición.
 			while (true) {
-				yield snapshot(ctx, s.id);
+				yield { type: 'step', snap: snapshot(ctx, s.id) };
 				if (!asBool(evalExpr(s.cond, ctx))) break;
 				yield* runBlock(s.body, ctx);
 				guard(ctx);
@@ -81,7 +95,7 @@ function* runStmt(s: Stmt, ctx: Ctx): Generator<Snapshot, void, void> {
 			// Repetir … Hasta Que cond: se repite MIENTRAS cond sea falsa.
 			while (true) {
 				yield* runBlock(s.body, ctx);
-				yield snapshot(ctx, s.id);
+				yield { type: 'step', snap: snapshot(ctx, s.id) };
 				if (asBool(evalExpr(s.cond, ctx))) break;
 				guard(ctx);
 			}
@@ -93,7 +107,7 @@ function* runStmt(s: Stmt, ctx: Ctx): Generator<Snapshot, void, void> {
 			ctx.vars.set(s.var, i);
 			while (step > 0 ? i <= to : i >= to) {
 				ctx.vars.set(s.var, i);
-				yield snapshot(ctx, s.id);
+				yield { type: 'step', snap: snapshot(ctx, s.id) };
 				yield* runBlock(s.body, ctx);
 				i += step;
 				guard(ctx);
@@ -110,12 +124,11 @@ function guard(_ctx: Ctx) {
 	if (_steps > 1_000_000) throw new RuntimeError('El algoritmo hizo demasiados pasos (¿ciclo infinito?)');
 }
 
-function nextInput(ctx: Ctx, name: string): Value {
-	if (ctx.inputPos >= ctx.inputs.length)
-		throw new RuntimeError(`Faltan entradas: el algoritmo pidió leer "${name}" pero no hay más datos`);
-	const tok = ctx.inputs[ctx.inputPos++];
-	const n = Number(tok);
-	return tok !== '' && !Number.isNaN(n) ? n : tok;
+/** Convierte un token de entrada en número si parece número, si no en texto. */
+function parseToken(tok: string): Value {
+	const t = tok.trim();
+	const n = Number(t);
+	return t !== '' && !Number.isNaN(n) ? n : tok;
 }
 
 // ---------- Evaluación de expresiones ----------
@@ -219,10 +232,15 @@ function format(v: Value): string {
 	return String(v);
 }
 
-/** Corre el programa hasta el final y devuelve solo la salida (para tests/retos). */
+/** Corre el programa hasta el final con entradas precargadas y devuelve la salida
+ * (para tests/retos). Si pide una entrada sin datos, la trata como vacía. */
 export function runToOutput(program: Program, inputRaw = ''): string[] {
-	_steps = 0;
+	const gen = execute(program, inputRaw);
 	let last: Snapshot | undefined;
-	for (const snap of execute(program, inputRaw)) last = snap;
+	let r = gen.next();
+	while (!r.done) {
+		if (r.value.type === 'step') last = r.value.snap;
+		r = gen.next(''); // entrada faltante = vacío en modo batch
+	}
 	return last ? last.output : [];
 }
