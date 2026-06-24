@@ -169,11 +169,31 @@
 
 			<!-- ramas anidadas -->
 			{#if s.kind === 'if'}
-				<div class="ml-3 mb-2 border-l-2 border-amber-700/60 pl-2">
-					<div class="py-0.5 text-[10px] uppercase tracking-wide text-emerald-400">Sí →</div>
-					<Self {program} block={s.then} parentId={s.id} branch="then" {onchange} />
-					<div class="py-0.5 text-[10px] uppercase tracking-wide text-rose-400">Si no →</div>
-					<Self {program} block={s.else} parentId={s.id} branch="else" {onchange} />
+				<div class="px-2 pb-2">
+					<!-- bifurcación: la decisión se abre en dos caminos -->
+					<div class="relative h-4">
+						<div class="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+						<div class="absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-amber-600"></div>
+						<div class="absolute bottom-0 left-1/4 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+						<div class="absolute bottom-0 left-3/4 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+					</div>
+					<div class="flex items-start">
+						<div class="flex w-1/2 flex-col px-1">
+							<span class="mb-1 self-center rounded-full border border-emerald-600 bg-emerald-950/60 px-2 text-[10px] font-semibold uppercase text-emerald-300">Sí</span>
+							<Self {program} block={s.then} parentId={s.id} branch="then" {onchange} />
+						</div>
+						<div class="flex w-1/2 flex-col px-1">
+							<span class="mb-1 self-center rounded-full border border-rose-600 bg-rose-950/60 px-2 text-[10px] font-semibold uppercase text-rose-300">No</span>
+							<Self {program} block={s.else} parentId={s.id} branch="else" {onchange} />
+						</div>
+					</div>
+					<!-- los caminos se reúnen -->
+					<div class="relative h-4">
+						<div class="absolute top-0 left-1/4 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+						<div class="absolute top-0 left-3/4 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+						<div class="absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-amber-600"></div>
+						<div class="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2 bg-amber-600"></div>
+					</div>
 				</div>
 			{:else if s.kind === 'while' || s.kind === 'for' || s.kind === 'dowhile'}
 				<div class="ml-3 mb-2 border-l-2 border-sky-700/60 pl-2">
