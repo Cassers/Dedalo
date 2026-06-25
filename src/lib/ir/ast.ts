@@ -55,7 +55,8 @@ export type Stmt =
 	| If
 	| While
 	| DoWhile
-	| For;
+	| For
+	| CallFn;
 
 export interface Assign extends Node {
 	kind: 'assign';
@@ -108,6 +109,19 @@ export interface For extends Node {
 	flip?: boolean;
 }
 
+/**
+ * Llamada a una función guardada por el usuario (bloque custom = "subproceso").
+ * No incrusta la definición: referencia por nombre y se resuelve en runtime
+ * contra el registro de funciones (codegen/intérprete). `resultVar` opcional
+ * captura el valor devuelto.
+ */
+export interface CallFn extends Node {
+	kind: 'callfn';
+	fnName: string;
+	args: Expr[];
+	resultVar?: string;
+}
+
 export interface Program {
 	/** Nombre de la función (símbolo de Inicio). Por defecto "main". */
 	name: string;
@@ -115,6 +129,14 @@ export interface Program {
 	params?: string[];
 	/** Variable a devolver al terminar (símbolo de Fin). Si está vacío, no devuelve nada. */
 	returnVar?: string;
+	body: Stmt[];
+}
+
+/** Definición de función disponible como bloque custom (registro en runtime). */
+export interface FnDef {
+	name: string;
+	params: string[];
+	returnVar: string | null;
 	body: Stmt[];
 }
 
@@ -148,6 +170,24 @@ export const forr = (
 	step: Expr = num(1)
 ): For => ({ kind: 'for', id: newId('for'), var: varName, from, to, step, body });
 
+export const callFn = (fnName: string, args: Expr[] = [], resultVar?: string): CallFn => ({
+	kind: 'callfn',
+	id: newId('cf'),
+	fnName,
+	args,
+	resultVar
+});
+
+/** Crea un bloque de llamada para una función guardada: args = sus parámetros como
+ * variables (editable luego), y captura el retorno en una variable si la función devuelve. */
+export function createCallFromDef(fn: FnDef): CallFn {
+	return callFn(
+		fn.name,
+		fn.params.map((p) => v(p)),
+		fn.returnVar ? 'r' : undefined
+	);
+}
+
 /** Crea una sentencia por defecto del tipo dado (al soltar un bloque de la paleta). */
 export function createStmt(kind: Stmt['kind']): Stmt {
 	switch (kind) {
@@ -165,6 +205,8 @@ export function createStmt(kind: Stmt['kind']): Stmt {
 			return forr('i', num(1), num(10), []);
 		case 'dowhile':
 			return dowhile([], bin('>', v('x'), num(0)));
+		case 'callfn':
+			return callFn('', []);
 	}
 }
 
@@ -189,6 +231,8 @@ export function cloneStmt(s: Stmt): Stmt {
 			return { kind: 'dowhile', id: newId('do'), body: s.body.map(cloneStmt), cond: e(s.cond), flip: s.flip };
 		case 'for':
 			return { kind: 'for', id: newId('for'), var: s.var, from: e(s.from), to: e(s.to), step: e(s.step), body: s.body.map(cloneStmt), flip: s.flip };
+		case 'callfn':
+			return { kind: 'callfn', id: newId('cf'), fnName: s.fnName, args: s.args.map(e), resultVar: s.resultVar };
 	}
 }
 

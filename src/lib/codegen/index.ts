@@ -5,7 +5,8 @@
  * sintaxis de cada dialecto. MVP: pseudocódigo (español), Python y JavaScript.
  * Para sumar un lenguaje tipado (C/Java) basta otro `Dialect` + manejo de tipos.
  */
-import type { Program, Stmt, Expr, BinOp, UnOp, BuiltinFn } from '$lib/ir/ast';
+import type { Program, Stmt, Expr, BinOp, UnOp, BuiltinFn, FnDef } from '$lib/ir/ast';
+import { childLists } from '$lib/ir/ast';
 
 export type TargetLang = 'pseudo' | 'python' | 'javascript';
 
@@ -45,6 +46,8 @@ interface Dialect {
 	funcOpen: (name: string, params: string[]) => string;
 	funcClose: string | null;
 	ret: (varName: string) => string;
+	// Llamada a una función guardada (bloque custom). resultVar opcional.
+	callfn: (resultVar: string | undefined, fnName: string, args: string[]) => string[];
 }
 
 // ---------- Render de expresiones ----------
@@ -109,6 +112,8 @@ function emitStmt(s: Stmt, d: Dialect): string[] {
 			if (d.whileClose) lines.push(d.whileClose);
 			return lines;
 		}
+		case 'callfn':
+			return d.callfn(s.resultVar, s.fnName, s.args.map((a) => emitExpr(a, d)));
 		case 'dowhile':
 			return emitDoWhile(s.body, emitExpr(s.cond, d), d);
 		case 'for': {
@@ -169,7 +174,8 @@ const pseudo: Dialect = {
 	forClose: 'FinPara',
 	funcOpen: (name, params) => `Funcion ${name}(${params.join(', ')})`,
 	funcClose: 'FinFuncion',
-	ret: (vn) => `Retornar ${vn}`
+	ret: (vn) => `Retornar ${vn}`,
+	callfn: (rv, fn, args) => [`${rv ? `${rv} <- ` : ''}${fn}(${args.join(', ')})`]
 };
 
 const python: Dialect = {
@@ -194,7 +200,8 @@ const python: Dialect = {
 	forClose: null,
 	funcOpen: (name, params) => `def ${name}(${params.join(', ')}):`,
 	funcClose: null,
-	ret: (vn) => `return ${vn}`
+	ret: (vn) => `return ${vn}`,
+	callfn: (rv, fn, args) => [`${rv ? `${rv} = ` : ''}${fn}(${args.join(', ')})`]
 };
 
 const javascript: Dialect = {
@@ -220,14 +227,31 @@ const javascript: Dialect = {
 	forClose: '}',
 	funcOpen: (name, params) => `function ${name}(${params.join(', ')}) {`,
 	funcClose: '}',
-	ret: (vn) => `return ${vn};`
+	ret: (vn) => `return ${vn};`,
+	callfn: (rv, fn, args) => [`${rv ? `let ${rv} = ` : ''}${fn}(${args.join(', ')});`]
 };
 
 const DIALECTS: Record<TargetLang, Dialect> = { pseudo, python, javascript };
 
+/** Nombres de funciones usadas (recursivo, post-orden → dependencias primero). */
+function collectUsedFns(body: Stmt[], byName: Map<string, FnDef>, seen: Set<string>, out: string[]) {
+	for (const s of body) {
+		if (s.kind === 'callfn') {
+			if (!seen.has(s.fnName)) {
+				seen.add(s.fnName);
+				const def = byName.get(s.fnName);
+				if (def) {
+					collectUsedFns(def.body, byName, seen, out); // deps de la función primero
+					out.push(s.fnName);
+				}
+			}
+		}
+		for (const list of childLists(s)) collectUsedFns(list, byName, seen, out);
+	}
+}
+
 /** Encabezados (imports / helpers) que el código necesita. */
-function header(lang: TargetLang, p: Program): string[] {
-	const all = JSON.stringify(p);
+function header(lang: TargetLang, all: string): string[] {
 	if (lang === 'python') {
 		const lines: string[] = [];
 		if (all.includes('math.')) lines.push('import math');
@@ -244,22 +268,34 @@ function header(lang: TargetLang, p: Program): string[] {
 	return [];
 }
 
-/** Punto de entrada: AST → string de código en el lenguaje pedido. */
-export function generate(lang: TargetLang, program: Program): string {
+/** Envuelve un cuerpo en una firma de función + retorno opcional. */
+function emitFunction(d: Dialect, name: string, params: string[], body: Stmt[], returnVar?: string | null): string[] {
+	const inner = emitStmts(body, d);
+	if (returnVar) inner.push(d.ret(returnVar));
+	return [d.funcOpen(name, params), ...indentLines(inner, d, 1), ...(d.funcClose ? [d.funcClose] : [])];
+}
+
+/** Punto de entrada: AST → string de código. `fns` = funciones guardadas (bloques custom). */
+export function generate(lang: TargetLang, program: Program, fns: FnDef[] = []): string {
 	const d = DIALECTS[lang];
 	const name = program.name || 'main';
 	const params = program.params ?? [];
+	const byName = new Map(fns.map((f) => [f.name, f]));
 
-	// El cuerpo se envuelve en la firma de la función e indenta un nivel.
-	const inner = emitStmts(program.body, d);
-	if (program.returnVar) inner.push(d.ret(program.returnVar));
+	// Definiciones de las funciones usadas (recursivo, dependencias primero).
+	const usedNames: string[] = [];
+	collectUsedFns(program.body, byName, new Set(), usedNames);
+	const defs: string[] = [];
+	for (const fnName of usedNames) {
+		const f = byName.get(fnName);
+		if (!f) continue;
+		defs.push(...emitFunction(d, f.name, f.params, f.body, f.returnVar), '');
+	}
 
-	const body = [
-		d.funcOpen(name, params),
-		...indentLines(inner, d, 1),
-		...(d.funcClose ? [d.funcClose] : [])
-	];
+	const main = emitFunction(d, name, params, program.body, program.returnVar);
 
-	const lines = [...header(lang, program), ...body];
+	// El header detecta imports/helpers sobre TODO el código (programa + funciones usadas).
+	const all = JSON.stringify(program) + usedNames.map((n) => JSON.stringify(byName.get(n))).join('');
+	const lines = [...header(lang, all), ...defs, ...main];
 	return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }

@@ -2,6 +2,8 @@
 	import type { Program } from '$lib/ir/ast';
 	import { execute, RuntimeError, type Step, type Value } from '$lib/interp/run';
 	import { activeStmtId } from '$lib/dfd/active';
+	import { functionRegistry } from '$lib/dfd/functions';
+	import { get } from 'svelte/store';
 	import { tick as svelteTick } from 'svelte';
 
 	let { program, input = $bindable('') }: { program: Program; input?: string } = $props();
@@ -37,7 +39,7 @@
 	function ensure() {
 		if (!gen) {
 			// Si el panel de entrada precargada está cerrado, se ignora → todo interactivo.
-			gen = execute(program, usePreload ? input : '');
+			gen = execute(program, usePreload ? input : '', get(functionRegistry));
 			finished = false;
 			error = null;
 		}

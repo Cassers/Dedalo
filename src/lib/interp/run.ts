@@ -5,7 +5,7 @@
  * activo (para resaltarlo en el diagrama), las variables y la salida acumulada.
  * Eso da el efecto "videojuego": correr todo, o avanzar paso a paso.
  */
-import type { Program, Stmt, Expr, BinOp, BuiltinFn } from '$lib/ir/ast';
+import type { Program, Stmt, Expr, BinOp, BuiltinFn, FnDef } from '$lib/ir/ast';
 
 export type Value = number | string | boolean;
 
@@ -30,6 +30,8 @@ interface Ctx {
 	inputs: string[]; // cola de tokens de entrada
 	inputPos: number;
 	output: string[];
+	fns: Map<string, FnDef>; // funciones guardadas (bloques custom)
+	depth: number; // profundidad de llamadas (guarda anti-recursión infinita)
 }
 
 /** Convierte el texto de stdin en tokens (números o palabras). */
@@ -46,9 +48,16 @@ function snapshot(ctx: Ctx, nodeId: string): Snapshot {
  * cede `{type:'input'}` hay que reanudar con `next(valorEscrito)`. Si hay datos
  * precargados (inputRaw) se consumen primero; si faltan, se PIDE al usuario.
  */
-export function* execute(program: Program, inputRaw = ''): Generator<Step, void, string> {
+export function* execute(program: Program, inputRaw = '', fns: FnDef[] = []): Generator<Step, void, string> {
 	_steps = 0;
-	const ctx: Ctx = { vars: new Map(), inputs: tokenizeInput(inputRaw), inputPos: 0, output: [] };
+	const ctx: Ctx = {
+		vars: new Map(),
+		inputs: tokenizeInput(inputRaw),
+		inputPos: 0,
+		output: [],
+		fns: new Map(fns.map((f) => [f.name, f])),
+		depth: 0
+	};
 
 	// Los parámetros del Inicio se piden como entradas (precarga primero, si no al usuario).
 	for (const name of program.params ?? []) {
@@ -117,6 +126,25 @@ function* runStmt(s: Stmt, ctx: Ctx): Generator<Step, void, string> {
 				guard(ctx);
 			}
 			return;
+		case 'callfn': {
+			const fn = ctx.fns.get(s.fnName);
+			if (!fn) throw new RuntimeError(`Función no definida: "${s.fnName}" (¿la borraste?)`);
+			if (ctx.depth >= 100) throw new RuntimeError('Demasiada recursión de funciones');
+			// Evalúa argumentos en el scope actual, luego abre un scope hijo.
+			const argVals = s.args.map((a) => evalExpr(a, ctx));
+			const saved = ctx.vars;
+			ctx.vars = new Map();
+			fn.params.forEach((p, i) => ctx.vars.set(p, argVals[i] ?? 0));
+			ctx.depth += 1;
+			yield { type: 'step', snap: snapshot(ctx, s.id) }; // resalta el subproceso (entrada)
+			yield* runBlock(fn.body, ctx);
+			const ret = fn.returnVar && ctx.vars.has(fn.returnVar) ? ctx.vars.get(fn.returnVar)! : undefined;
+			ctx.vars = saved; // restaura el scope del llamador
+			ctx.depth -= 1;
+			if (s.resultVar && ret !== undefined) ctx.vars.set(s.resultVar, ret);
+			yield { type: 'step', snap: snapshot(ctx, s.id) }; // resalta el subproceso (retorno)
+			return;
+		}
 		case 'for': {
 			let i = asNum(evalExpr(s.from, ctx));
 			const to = asNum(evalExpr(s.to, ctx));
@@ -251,8 +279,8 @@ function format(v: Value): string {
 
 /** Corre el programa hasta el final con entradas precargadas y devuelve la salida
  * (para tests/retos). Si pide una entrada sin datos, la trata como vacía. */
-export function runToOutput(program: Program, inputRaw = ''): string[] {
-	const gen = execute(program, inputRaw);
+export function runToOutput(program: Program, inputRaw = '', fns: FnDef[] = []): string[] {
+	const gen = execute(program, inputRaw, fns);
 	let last: Snapshot | undefined;
 	let r = gen.next();
 	while (!r.done) {

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Program, Stmt } from '$lib/ir/ast';
+	import { functionRegistry } from '$lib/dfd/functions';
+	import { onMount } from 'svelte';
 
 	interface SavedFn {
 		id: number;
@@ -33,12 +35,20 @@
 			const r = await fetch('/api/functions');
 			if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || 'Error');
 			list = await r.json();
+			// Sincroniza el registro para la paleta (bloques custom) y codegen/intérprete.
+			functionRegistry.set(
+				list.map((f) => ({ name: f.name, params: f.params, returnVar: f.returnVar, body: f.body }))
+			);
 		} catch (e) {
 			msg = e instanceof Error ? e.message : 'Error cargando funciones';
 		} finally {
 			loading = false;
 		}
 	}
+
+	onMount(() => {
+		if (loggedIn) refresh();
+	});
 
 	function toggle() {
 		open = !open;

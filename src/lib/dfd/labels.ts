@@ -45,5 +45,9 @@ export function stmtLabel(s: Stmt): string {
 			return `${s.var}: ${exprText(s.from)}..${exprText(s.to)}`;
 		case 'dowhile':
 			return `¿${exprText(s.cond)}?`;
+		case 'callfn': {
+			const call = `${s.fnName}(${s.args.map(exprText).join(', ')})`;
+			return s.resultVar ? `${s.resultVar} ← ${call}` : call;
+		}
 	}
 }

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import type { Program } from '$lib/ir/ast';
 	import { generate, TARGETS, type TargetLang } from '$lib/codegen';
+	import { functionRegistry } from '$lib/dfd/functions';
 
 	let { program }: { program: Program } = $props();
 	let lang = $state<TargetLang>('python');
 
 	const code = $derived.by(() => {
 		try {
-			return generate(lang, program);
+			return generate(lang, program, $functionRegistry);
 		} catch {
 			return '// (no se pudo generar — revisa el diagrama)';
 		}

@@ -4,6 +4,7 @@ import type { Stmt } from './ir/ast';
 /** Qué se está arrastrando: un bloque NUEVO de la paleta o uno EXISTENTE (mover). */
 export type DragPayload =
 	| { type: 'new'; kind: Stmt['kind'] }
+	| { type: 'newfn'; fnName: string }
 	| { type: 'move'; id: string }
 	| null;
 

@@ -7,7 +7,7 @@ import type { Program, Stmt } from '$lib/ir/ast';
 import type { Branch } from '$lib/ir/edit';
 import { stmtLabel } from './labels';
 
-export type ShapeKind = 'oval' | 'rect' | 'io' | 'decision';
+export type ShapeKind = 'oval' | 'rect' | 'io' | 'decision' | 'subprocess';
 
 export interface FlowNode {
 	id: string;
@@ -158,6 +158,8 @@ function placeStmt(s: Stmt, parentId: string | null, branch: Branch, cx: number,
 	switch (s.kind) {
 		case 'assign':
 			return simple(node('rect', s, cx, y, nodeW(s), NH));
+		case 'callfn':
+			return simple(node('subprocess', s, cx, y, nodeW(s), NH));
 		case 'read':
 		case 'write':
 			return simple(node('io', s, cx, y, nodeW(s), NH));

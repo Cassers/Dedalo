@@ -3,6 +3,10 @@
 	import { exprText } from '$lib/dfd/labels';
 	import { tryParseExpr } from '$lib/ir/parse';
 	import { META } from '$lib/dfd/blockmeta';
+	import { functionRegistry } from '$lib/dfd/functions';
+
+	const paramNames = (fnName: string) =>
+		$functionRegistry.find((f) => f.name === fnName)?.params ?? [];
 
 	let {
 		stmt,
@@ -40,7 +44,7 @@
 </script>
 
 <div class="mb-2 flex items-center justify-between">
-	<span class="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Editar · {META[stmt.kind].label}</span>
+	<span class="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Editar · {stmt.kind === 'callfn' ? 'Función' : META[stmt.kind].label}</span>
 	<button class="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200" onclick={onclose} title="cerrar">✕</button>
 </div>
 
@@ -84,6 +88,18 @@
 				<input class={inp} value={exprText(stmt.to)} onchange={(e) => setExpr(e.target as HTMLInputElement, (x) => (stmt.to = x))} />
 			</div>
 		</div>
+	{:else if stmt.kind === 'callfn'}
+		<div class="text-[11px] text-teal-600 dark:text-teal-300">Llama a <b class="font-mono">{stmt.fnName}</b></div>
+		<div>
+			<div class={lbl}>Guardar resultado en (opcional)</div>
+			<input class={inp} value={stmt.resultVar ?? ''} placeholder="(no captura)" onchange={(e) => { const val = (e.target as HTMLInputElement).value.trim(); stmt.resultVar = val || undefined; onchange(); }} />
+		</div>
+		{#each stmt.args as arg, i (i)}
+			<div>
+				<div class={lbl}>Argumento {paramNames(stmt.fnName)[i] ?? i + 1}</div>
+				<input class={inp} value={exprText(arg)} onchange={(e) => setExpr(e.target as HTMLInputElement, (x) => (stmt.args[i] = x))} />
+			</div>
+		{/each}
 	{/if}
 
 	{#if stmt.kind === 'if' || stmt.kind === 'while' || stmt.kind === 'for' || stmt.kind === 'dowhile'}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Program } from '$lib/ir/ast';
-	import { createStmt, cloneStmt } from '$lib/ir/ast';
+	import { createStmt, cloneStmt, createCallFromDef } from '$lib/ir/ast';
+	import { functionRegistry } from '$lib/dfd/functions';
 	import { buildFlow, type FlowNode } from '$lib/dfd/flowlayout';
 	import { insertAt, moveTo, moveGroup, removeStmt, findStmt, selectionRoots, locateFull } from '$lib/ir/edit';
 	import { activeStmtId, selection, selectOnly, toggleSelect, clearSelection } from '$lib/dfd/active';
@@ -39,12 +40,14 @@
 		if (n.shape === 'oval') return n.label === 'Fin' ? (d ? '#4c0519' : '#ffe4e6') : d ? '#052e16' : '#dcfce7';
 		if (n.shape === 'io') return d ? 'rgba(124,58,237,0.28)' : '#ede9fe';
 		if (n.shape === 'decision') return d ? 'rgba(180,83,9,0.28)' : '#fef3c7';
+		if (n.shape === 'subprocess') return d ? 'rgba(13,148,136,0.25)' : '#ccfbf1';
 		return d ? '#27272a' : '#f4f4f5';
 	}
 	function strokeFor(n: FlowNode) {
 		if (n.shape === 'oval') return n.label === 'Fin' ? '#e11d48' : '#10b981';
 		if (n.shape === 'io') return '#8b5cf6';
 		if (n.shape === 'decision') return '#f59e0b';
+		if (n.shape === 'subprocess') return '#14b8a6';
 		return $isDark ? '#71717a' : '#a1a1aa';
 	}
 	const edgeColor = $derived($isDark ? '#71717a' : '#a1a1aa');
@@ -65,6 +68,9 @@
 		if (!p) return;
 		if (p.type === 'new') {
 			insertAt(program, d.parentId, d.branch, d.index, createStmt(p.kind));
+		} else if (p.type === 'newfn') {
+			const fn = get(functionRegistry).find((f) => f.name === p.fnName);
+			if (fn) insertAt(program, d.parentId, d.branch, d.index, createCallFromDef(fn));
 		} else if ($selection.has(p.id) && $selection.size > 1) {
 			moveGroup(program, $selection, d.parentId, d.branch, d.index); // mover grupo
 		} else {
@@ -225,6 +231,10 @@
 						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx={n.h / 2} ry={n.h / 2} fill={fillFor(n)} {stroke} stroke-width={selected ? 3 : 2} stroke-dasharray={moving ? '5 4' : undefined} />
 					{:else if n.shape === 'rect'}
 						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx="6" fill={fillFor(n)} {stroke} stroke-width={selected ? 3 : 2} stroke-dasharray={moving ? '5 4' : undefined} />
+					{:else if n.shape === 'subprocess'}
+						<rect x={n.cx - n.w / 2} y={n.y} width={n.w} height={n.h} rx="4" fill={fillFor(n)} {stroke} stroke-width={selected ? 3 : 2} stroke-dasharray={moving ? '5 4' : undefined} />
+						<line x1={n.cx - n.w / 2 + 7} y1={n.y} x2={n.cx - n.w / 2 + 7} y2={n.y + n.h} {stroke} stroke-width="1.5" />
+						<line x1={n.cx + n.w / 2 - 7} y1={n.y} x2={n.cx + n.w / 2 - 7} y2={n.y + n.h} {stroke} stroke-width="1.5" />
 					{:else}
 						<polygon points={shapePoints(n)} fill={fillFor(n)} {stroke} stroke-width={selected ? 3 : 2} stroke-dasharray={moving ? '5 4' : undefined} />
 					{/if}
