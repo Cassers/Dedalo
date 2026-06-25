@@ -44,6 +44,7 @@ export const functions = pgTable(
 		name: text('name').notNull(),
 		params: jsonb('params').$type<string[]>().notNull().default([]),
 		returnVar: text('return_var'), // null = no devuelve nada
+		folder: text('folder'), // null = sin carpeta (organización en el panel)
 		body: jsonb('body').$type<Stmt[]>().notNull().default([]),
 		isPublic: boolean('is_public').notNull().default(false),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

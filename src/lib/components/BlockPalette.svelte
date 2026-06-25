@@ -16,6 +16,20 @@
 	function onDragEnd() {
 		dragging.set(null);
 	}
+
+	// Agrupa las funciones por carpeta (con nombre primero, sin carpeta al final).
+	const fnGroups = $derived.by(() => {
+		const map = new Map<string, typeof $functionRegistry>();
+		for (const fn of $functionRegistry) {
+			const k = fn.folder ?? '';
+			if (!map.has(k)) map.set(k, []);
+			map.get(k)!.push(fn);
+		}
+		const named = [...map.keys()].filter((k) => k !== '').sort((a, b) => a.localeCompare(b));
+		const out: Array<[string, typeof $functionRegistry]> = named.map((n) => [n, map.get(n)!]);
+		if (map.has('')) out.push(['', map.get('')!]);
+		return out;
+	});
 </script>
 
 <div class="flex flex-col gap-2 p-3">
@@ -36,18 +50,23 @@
 
 	{#if $functionRegistry.length}
 		<p class="mt-2 border-t border-zinc-200 pt-2 text-[11px] text-zinc-500 dark:border-zinc-800">Mis funciones</p>
-		{#each $functionRegistry as fn (fn.name)}
-			<div
-				role="button"
-				tabindex="0"
-				draggable="true"
-				ondragstart={(e) => onFnDragStart(e, fn.name)}
-				ondragend={onDragEnd}
-				title="Arrastra para usar {fn.name}(…) como bloque"
-				class="cursor-grab rounded-lg border-2 border-teal-500 bg-white px-3 py-2 text-sm font-medium text-teal-700 active:cursor-grabbing dark:bg-zinc-900 dark:text-teal-300"
-			>
-				⊟ {fn.name}({fn.params.join(', ')})
-			</div>
+		{#each fnGroups as [folder, fns] (folder)}
+			{#if folder !== ''}
+				<p class="px-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">📁 {folder}</p>
+			{/if}
+			{#each fns as fn (fn.name)}
+				<div
+					role="button"
+					tabindex="0"
+					draggable="true"
+					ondragstart={(e) => onFnDragStart(e, fn.name)}
+					ondragend={onDragEnd}
+					title="Arrastra para usar {fn.name}(…) como bloque"
+					class="cursor-grab rounded-lg border-2 border-teal-500 bg-white px-3 py-2 text-sm font-medium text-teal-700 active:cursor-grabbing dark:bg-zinc-900 dark:text-teal-300"
+				>
+					⊟ {fn.name}({fn.params.join(', ')})
+				</div>
+			{/each}
 		{/each}
 	{/if}
 </div>
