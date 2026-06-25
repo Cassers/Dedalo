@@ -5,8 +5,10 @@
 	import FlowCanvas from '$lib/components/FlowCanvas.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import RunPanel from '$lib/components/RunPanel.svelte';
+	import FunctionsMenu from '$lib/components/FunctionsMenu.svelte';
 	import { clearSelection } from '$lib/dfd/active';
 	import { theme } from '$lib/theme';
+	import type { Stmt } from '$lib/ir/ast';
 	import type { LayoutData } from './$types';
 
 	let { data }: { data: LayoutData } = $props();
@@ -81,6 +83,22 @@
 		resetHistory();
 	}
 
+	function loadFunction(fn: { name: string; params: string[]; returnVar: string | null; body: Stmt[] }) {
+		// Clon profundo vía JSON (datos puros, des-proxya y desliga del estado guardado).
+		program = JSON.parse(
+			JSON.stringify({
+				name: fn.name,
+				params: fn.params ?? [],
+				returnVar: fn.returnVar ?? undefined,
+				body: fn.body ?? []
+			})
+		);
+		input = '';
+		sampleKey = '__blank__';
+		clearSelection();
+		resetHistory();
+	}
+
 	function onKey(e: KeyboardEvent) {
 		const t = e.target as HTMLElement;
 		if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
@@ -118,6 +136,7 @@
 			>↷</button>
 		</div>
 		<div class="ml-auto flex items-center gap-2">
+			<FunctionsMenu loggedIn={!!data.user} {program} onload={loadFunction} />
 			<!-- sesión -->
 			{#if data.user}
 				<div class="flex items-center gap-2">
