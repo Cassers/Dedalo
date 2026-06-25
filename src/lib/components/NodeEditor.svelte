@@ -15,7 +15,8 @@
 		onduplicate,
 		oncopy,
 		onpaste,
-		onclose
+		onclose,
+		onopenfn
 	}: {
 		stmt: Stmt;
 		onchange: () => void;
@@ -24,6 +25,7 @@
 		oncopy: () => void;
 		onpaste: () => void;
 		onclose: () => void;
+		onopenfn: (fnName: string) => void;
 	} = $props();
 
 	const lbl = 'mb-1 text-[10px] uppercase tracking-wide text-zinc-500';
@@ -89,7 +91,18 @@
 			</div>
 		</div>
 	{:else if stmt.kind === 'callfn'}
-		<div class="text-[11px] text-teal-600 dark:text-teal-300">Llama a <b class="font-mono">{stmt.fnName}</b></div>
+		<div class="flex items-center justify-between gap-2">
+			<div class="text-[11px] text-teal-600 dark:text-teal-300">Llama a <b class="font-mono">{stmt.fnName}</b></div>
+			{#if $functionRegistry.some((f) => f.name === stmt.fnName)}
+				<button
+					class="shrink-0 rounded border border-teal-500 px-2 py-0.5 text-[11px] font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-950/40"
+					onclick={() => onopenfn(stmt.fnName)}
+					title="Abrir la definición de {stmt.fnName} en el lienzo"
+				>
+					Abrir función ↗
+				</button>
+			{/if}
+		</div>
 		<div>
 			<div class={lbl}>Guardar resultado en (opcional)</div>
 			<input class={inp} value={stmt.resultVar ?? ''} placeholder="(no captura)" onchange={(e) => { const val = (e.target as HTMLInputElement).value.trim(); stmt.resultVar = val || undefined; onchange(); }} />

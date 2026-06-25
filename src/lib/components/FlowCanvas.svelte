@@ -11,7 +11,11 @@
 	import NodeEditor from './NodeEditor.svelte';
 	import ProgramEditor from './ProgramEditor.svelte';
 
-	let { program, onchange }: { program: Program; onchange: () => void } = $props();
+	let {
+		program,
+		onchange,
+		onopenfn
+	}: { program: Program; onchange: () => void; onopenfn: (fnName: string) => void } = $props();
 
 	const flow = $derived(buildFlow(program));
 	let progEdit = $state<'start' | 'end' | null>(null);
@@ -312,7 +316,7 @@
 	<!-- editor del bloque (selección única) -->
 	{#if single}
 		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-sky-300 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-sky-800 dark:bg-zinc-900/95">
-			<NodeEditor stmt={single} {onchange} ondelete={() => del(single.id)} onduplicate={duplicate} oncopy={copy} onpaste={paste} onclose={() => clearSelection()} />
+			<NodeEditor stmt={single} {onchange} {onopenfn} ondelete={() => del(single.id)} onduplicate={duplicate} oncopy={copy} onpaste={paste} onclose={() => clearSelection()} />
 		</div>
 	{:else if progEdit}
 		<div data-panel class="absolute right-3 top-3 w-64 rounded-lg border border-emerald-300 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-zinc-900/95">

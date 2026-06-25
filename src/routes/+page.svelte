@@ -8,6 +8,8 @@
 	import FunctionsMenu from '$lib/components/FunctionsMenu.svelte';
 	import ChallengePanel from '$lib/components/ChallengePanel.svelte';
 	import { clearSelection } from '$lib/dfd/active';
+	import { functionRegistry } from '$lib/dfd/functions';
+	import { get } from 'svelte/store';
 	import { theme } from '$lib/theme';
 	import type { Stmt } from '$lib/ir/ast';
 	import type { LayoutData } from './$types';
@@ -98,6 +100,14 @@
 		sampleKey = '__blank__';
 		clearSelection();
 		resetHistory();
+	}
+
+	/** "Entrar" a una función desde su bloque en el lienzo: carga su definición
+	 *  guardada (del registro) para verla/editarla. Reemplaza el lienzo actual. */
+	function openFunction(fnName: string) {
+		const fn = get(functionRegistry).find((f) => f.name === fnName);
+		if (!fn) return;
+		loadFunction(fn);
 	}
 
 	function applySignature(name: string, params: string[]) {
@@ -197,7 +207,7 @@
 
 		<!-- centro: diagrama de flujo (arrastra aquí) -->
 		<main class="min-w-0 flex-1 bg-[radial-gradient(circle,#d4d4d8_1px,transparent_1px)] [background-size:22px_22px] dark:bg-[radial-gradient(circle,#18181b_1px,transparent_1px)]">
-			<FlowCanvas {program} onchange={touch} />
+			<FlowCanvas {program} onchange={touch} onopenfn={openFunction} />
 		</main>
 
 		<!-- derecha: código + ejecución -->
