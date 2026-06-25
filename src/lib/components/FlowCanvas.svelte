@@ -59,7 +59,10 @@
 		if (!$dragging) return;
 		e.preventDefault();
 		overKey = key;
-		if (e.dataTransfer) e.dataTransfer.dropEffect = $dragging.type === 'new' ? 'copy' : 'move';
+		// 'new' y 'newfn' son inserciones desde la paleta (effectAllowed='copy' allá);
+		// el dropEffect debe casar con effectAllowed o el navegador rechaza el drop.
+		if (e.dataTransfer)
+			e.dataTransfer.dropEffect = $dragging.type === 'move' ? 'move' : 'copy';
 	}
 	function drop(e: DragEvent, d: (typeof flow.drops)[number]) {
 		e.preventDefault();
