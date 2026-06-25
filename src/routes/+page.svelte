@@ -6,6 +6,7 @@
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import RunPanel from '$lib/components/RunPanel.svelte';
 	import FunctionsMenu from '$lib/components/FunctionsMenu.svelte';
+	import ChallengePanel from '$lib/components/ChallengePanel.svelte';
 	import { clearSelection } from '$lib/dfd/active';
 	import { theme } from '$lib/theme';
 	import type { Stmt } from '$lib/ir/ast';
@@ -99,6 +100,13 @@
 		resetHistory();
 	}
 
+	function applySignature(name: string, params: string[]) {
+		// Configura el Inicio para que la función generada calce con la firma del reto.
+		program = { ...program, name, params };
+		clearSelection();
+		resetHistory();
+	}
+
 	function onKey(e: KeyboardEvent) {
 		const t = e.target as HTMLElement;
 		if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
@@ -136,6 +144,7 @@
 			>↷</button>
 		</div>
 		<div class="ml-auto flex items-center gap-2">
+			<ChallengePanel loggedIn={!!data.user} {program} onapply={applySignature} />
 			<FunctionsMenu loggedIn={!!data.user} {program} onload={loadFunction} />
 			<!-- sesión -->
 			{#if data.user}
